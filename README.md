@@ -14,5 +14,7 @@
 
 ### 20.9
 - preys must know if they are eaten  
-- how will the network evolve? how do i know when prey die?-> try if all predators are dead, reset the simulation
+- how will the network evolve? how do i know when prey die?-> try if all predators are dead, reset the simulation or give prey a lifespan if they aren't eaten by predators
+
+- CLEAN UP THE CODE IT IS DISGUSTING
 
