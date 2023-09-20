@@ -69,9 +69,9 @@ def correct_position(x, y):
 
     return new_x, new_y
 
-def check_food_eaten(entities, my_genomes, index):
-    predators = entities[:5]
-    preys = entities[5:-1]
+def check_food_eaten(predators, my_genomes, index):
+    predators = predators[:5]
+    preys = predators[5:-1]
     for p in predators:   
         for pr in preys:            
             if(p.rect.colliderect(pr.rect)):
@@ -80,13 +80,11 @@ def check_food_eaten(entities, my_genomes, index):
                 my_genomes[index].fitness += 30
                 p.update_food_eaten()
 
-def update_hunger(preys, my_genomes, neural_networks):
-    for index, prey in enumerate(preys):
-        prey.increaseHunger()
-        my_genomes[index].fitness -= 2.5
-        if prey.die == True:
+def check_die(entities, my_genomes, neural_networks):
+    for index, e in enumerate(entities):
+        if e.die == True:
             my_genomes[index].fitness -= 10
-            preys.pop(index)
+            entities.pop(index)
             neural_networks.pop(index)
             my_genomes.pop(index)
 
@@ -136,6 +134,8 @@ def main(genomes, config):
     global generation
  
     neural_networks, my_genomes, entities = setup_neat_variables(genomes, config)
+    predators = entities[:5]
+    preys = entities[5:15]
 
     entity_directions = [None for e in entities]
 
@@ -144,21 +144,30 @@ def main(genomes, config):
     clock = pygame.time.Clock()
 
     loop = 0
-
+            
     while run:
         clock.tick()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
+
+        
+        for p in predators:
+            p.updateHungerTimer()
             
         if len(entities) == 0:
             run = False
             pass
     
         for index, entity in enumerate(entities):  
-            #TODO all entities should be aware of eachother
-            inputs = entity.update_sensor(entities)
+            inputs = None
+        
+            if isinstance(entity, Predator):
+                inputs = entity.update_sensor(preys)
+            else:
+                inputs = entity.update_sensor(predators)
             
             if loop > 0:
                 inputs.append(direction_to_index(entity_directions[index]))
@@ -168,9 +177,8 @@ def main(genomes, config):
             outputs = neural_networks[index].activate((inputs)) 
             max_index = np.argmax(outputs)
 
-            #TODO reward entites for surviving -> only predators have hunger bars, preys just need to survive
-            # reward_food_proximity(inputs, my_genomes[:5], index)
-            check_food_eaten(entities, my_genomes, index)
+            check_food_eaten(predators, my_genomes, index)
+            check_die(entities, my_genomes, neural_networks)
                   
             previous_direction = entity_directions[index]
             
