@@ -16,7 +16,7 @@ NUM_PREYS = 10
 NUM_FOOD = 20
 WINDOW_HEIGHT = 1000
 WINDOW_WIDTH = 1500
-MAX_HUNGER = 30
+MAX_HUNGER = 15
 HUNGER_STEP = 1
 
 
@@ -74,17 +74,14 @@ class Predator(Entity):
 
             if (elapsedTime >= 5):
                 self.increaseHunger()
-                self.startTime = elapsedTime
+                self.startTime = currentTime
     
 
     def increaseHunger(self):
         if self.hunger < MAX_HUNGER:
             self.hunger += HUNGER_STEP
-            print("hunger increased to ", self.hunger)
         else:
             self.die = True
-            print("died")
-
 
     def update_food_eaten(self):
         self.food_eaten += 1

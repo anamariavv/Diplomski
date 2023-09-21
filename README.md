@@ -18,3 +18,9 @@
 
 - CLEAN UP THE CODE IT IS DISGUSTING
 
+### 21.9
+- predators now eat preys, preys disappear
+- fixed the hunger timer
+- preys now get rewarded for 
+- trying to train both populations at the same time (this is called coevolution): I'm not sure this will work. I tried to add a different integer to the input based on which class the genome is,   but i have to check if this will work with neat, or if i will have to train them separately and then combine the trained neural networks
+- alternative approach: 1. train predator on static prey 2. train prey on predator that constantly chases them 3. train predator on dynamic prey 4. train prey against multiple predators 4. combine into one world to observe results
