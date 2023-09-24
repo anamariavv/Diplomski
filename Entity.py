@@ -7,8 +7,6 @@ from Sensor import *
 PREDATOR_IMG = pygame.image.load(os.path.join("assets", "predator.png"))
 PREY_IMG = pygame.image.load(os.path.join("assets", "prey.png"))
 FOOD_IMG = pygame.image.load(os.path.join("assets", "food.png"))
-ENTITY_WIDTH = 20
-ENTITY_HEIGHT = 20
 FOOD_WIDTH = 20
 FOOD_HEIGHT = 20
 NUM_PREDATORS = 10
@@ -16,8 +14,9 @@ NUM_PREYS = 10
 NUM_FOOD = 20
 WINDOW_HEIGHT = 1000
 WINDOW_WIDTH = 1500
-MAX_HUNGER = 15
-HUNGER_STEP = 1
+MAX_HUNGER = 10
+HUNGER_STEP = 5
+VISION_RANGE = 200
 
 
 class Entity:
@@ -28,34 +27,89 @@ class Entity:
         self.angle = 0
         self.velocity = 1
         self.die = False
-        self.rect = pygame.Rect(self.x, self.y, ENTITY_WIDTH, ENTITY_HEIGHT)
-        self.sensor = Sensor(self.rect.center[0], self.rect.center[1])
+        self.size =(32,32)
+        self.surface = pygame.Surface(self.size)
+        self.surface.fill("green")
+        self.rect = pygame.Rect(self.x, self.y, self.size[0], self.size[1])
+        self.vision_rect = None
 
-    def move(self, direction):
-        if direction == 'A':
-            self.rect.x -= self.velocity
-        elif direction == 'D':
-            self.rect.x += self.velocity
-        elif direction == 'W':
-            self.rect.y -= self.velocity
-        elif direction == 'S':
-            self.rect.y += self.velocity
+    def moveForward(self):
+        self.x = self.x + self.velocity * math.cos(self.angle * math.pi / 180)
+        self.y = self.y + self.velocity * math.sin(self.angle * math.pi / 180)
+
+    def turn_left(self):
+        self.angle -= 5
+        self.angle %= 360
+
+    def turn_right(self):
+        self.angle += 5
+        self.angle %= 360
+
+    def getClosest(self, others):
+        minDistance = VISION_RANGE
+        angleDifference = 0
+        closest = None
+
+        for other in others:
+            if self.isInRadius(other):
+                otherAngle = self.calculateAngle(self.img.get_rect(center = (self.x, self.y)), other.img.get_rect(center=(other.x, other.y)))
+                leftBound = (self.angle-self.vision_angle) %360
+                rightBound = (self.angle+self.vision_angle) % 360
+                if self.isWithinVisionAngle(leftBound, rightBound, otherAngle):
+                    distanceToOther = math.dist(self.img.get_rect(center = (self.x, self.y)), other.img.get_rect(center=(other.x, other.y)))
+                    minDistance = distanceToOther
+                    angleDifference = self.calculateAngleDifference(self.angle, otherAngle)
+                    closest = other
+
+        return closest, minDistance, angleDifference
+
+    def isInRadius(self, other):    
+        if (self.x - (other.x))**2 + (self.y - (other.y))**2 < (self.vision_radius)**2:
+            return True
+        return False
+
+    def isWithinVisionAngle(self, leftBound, rightBound, angle):    
+        if (leftBound < -angle % 360  < rightBound) or (rightBound < leftBound and not(rightBound < -angle % 360  < leftBound)): 
+            return True
+        return False    
+
+    def calculateAngleDifference(self, angle1, angle2):
+        angle2 %= 360
+        angleDifference = angle1 - angle2
+
+        if angleDifference > 180:
+            angleDifference -= 360
+        if angleDifference < -180:
+            angleDifference += 360
+
+        return angleDifference
+
+    def calculateAngle(self, point1, point2):
+        if point2[0] - point1[0] == 0:
+            if point2[1] - point1[1] > 0:
+                return 90
+            else:
+                return -90
+        else:
+            return math.degrees(math.atan2(-1*(point2[1] - point1[1]), (point2[0] - point1[0])))
 
     def draw(self, surface):
-        surface.blit(self.img, (self.rect.x, self.rect.y))
+        rotated_img = pygame.transform.rotate(self.img, -self.angle)
+        new_rect = rotated_img.get_rect(center=self.img.get_rect(center=(self.x, self.y)).center)
+        self.rect = new_rect
+        surface.blit(rotated_img, new_rect.center)
 
-    def update_sensor(self, others):
-        self.sensor = Sensor(self.rect.x, self.rect.y)
-        possible_targets = [other.rect for other in others]
-        return self.sensor.detect_target(possible_targets)
+        self.vision_rect = pygame.Rect(self.x-self.vision_radius*2*0.5+self.size[0]*0.5, self.y-self.vision_radius*2*0.5+self.size[0]*0.5, self.vision_radius*2, self.vision_radius*2)
+        #pygame.draw.arc(surface, (0,0,255), self.vision_rect, -(self.vision_angle*math.pi/180)-(self.angle*math.pi/180), (self.vision_angle*math.pi/180)-(self.angle*math.pi/180))
 
-    def draw(self, surface):
-        surface.blit(self.img, (self.rect.x, self.rect.y))
-
+    def drawLineToClosestEntity(self, surface, closest):
+        pygame.draw.line(surface, (0, 0, 255), (self.x, self.y), (closest.x, closest.y), 2)
 
 class Prey(Entity):
     def __init__(self):
         super().__init__()
+        self.vision_angle = 120
+        self.vision_radius = 70
         self.img = PREY_IMG
 
 
@@ -65,6 +119,8 @@ class Predator(Entity):
         self.img = PREDATOR_IMG
         self.food_eaten = 0
         self.hunger = 0
+        self.vision_angle = 45
+        self.vision_radius = 180
         self.startTime = time.time()
 
     def updateHungerTimer(self):
@@ -75,7 +131,6 @@ class Predator(Entity):
             if (elapsedTime >= 5):
                 self.increaseHunger()
                 self.startTime = currentTime
-    
 
     def increaseHunger(self):
         if self.hunger < MAX_HUNGER:
