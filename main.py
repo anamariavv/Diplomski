@@ -2,6 +2,7 @@ import os
 import pygame
 from Entity import *
 import neat
+import math
 import itertools
 import matplotlib.pyplot as plt
 
@@ -22,7 +23,7 @@ def run(config_path):
     p.add_reporter(stats)
     p.add_reporter(neat.Checkpointer(5))
 
-    winner = p.run(main, 1000)
+    winner = p.run(main, 200)
     print('\nBest genome:\n{!s}'.format(winner))
 
 
@@ -54,7 +55,7 @@ def correct_position(x, y):
 
 def check_food_eaten(predator, preys, my_genomes, predator_index):
     for index, prey in enumerate(preys):
-        if(predator.img.get_rect(center = (predator.x, predator.y)).colliderect(prey.img.get_rect(center = (prey.x, prey.y)))):
+        if(predator.img.get_rect(topleft = (predator.x, predator.y)).colliderect(prey.img.get_rect(topleft = (prey.x, prey.y)))):
             predator.hunger -= 1
             predator.food_eaten += 1
             my_genomes[predator_index].fitness += 5
@@ -86,12 +87,16 @@ def setup_neat_variables(genomes, config):
 
 def drawAssistanceLines(predator, closest):
     predator.drawLineToClosestEntity(WIN, closest)
-    pygame.display.update()
+    predator.drawVisionLines(WIN)
+    pygame.display.update() 
 
+def drawVisionLines(predators):
+    for p in predators:
+        p.drawVisionLines(WIN)    
 
 def main(genomes, config):
     neural_networks, my_genomes, predators = setup_neat_variables(genomes, config)
-    preys = [Prey() for _ in range(30)]
+    preys = [Prey() for _ in range(50)]
    
     run = True
     clock = pygame.time.Clock()
@@ -120,12 +125,14 @@ def main(genomes, config):
             #Fill the input list for the neural network -> 2 inputs: distance and angle dif to closest food
             closest, distanceToPrey, angleToPrey = predator.getClosest(preys)    
             if closest is not None:
+                if math.fabs(angleToPrey) <= 10 and distanceToPrey <= 10 :
+                    my_genomes[index].fitness += 0.2
                 drawAssistanceLines(predator, closest)
                 inputs.append(distanceToPrey)
                 inputs.append(angleToPrey)
             else:
                 inputs.append(1000)
-                inputs.append(180)
+                inputs.append(0)
         
             #Get the outputs from the neural network (3 - left, right or forward)
             outputs = neural_networks[index].activate((inputs))
@@ -135,7 +142,7 @@ def main(genomes, config):
                 predator.moveForward()
             elif outputs[1] > 0.5:
                 predator.turn_left()
-            else:
+            elif outputs[2] > 0.5:
                 predator.turn_right()    
 
             #Correct the position if they reach edge of screen -> teleport to other end
@@ -146,6 +153,7 @@ def main(genomes, config):
             check_die(predators, my_genomes, neural_networks)
              
         draw_screen(predators, preys)
+        drawVisionLines(predators)
 
     for index, p in enumerate(predators):
         print(f'-------Predator number {index} ate {p.food_eaten} preys and has a fitness of {my_genomes[index].fitness}---------')

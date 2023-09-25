@@ -15,7 +15,7 @@ NUM_FOOD = 20
 WINDOW_HEIGHT = 1000
 WINDOW_WIDTH = 1500
 MAX_HUNGER = 10
-HUNGER_STEP = 5
+HUNGER_STEP = 1
 VISION_RANGE = 200
 
 
@@ -46,20 +46,21 @@ class Entity:
         self.angle %= 360
 
     def getClosest(self, others):
-        minDistance = VISION_RANGE
+        minDistance = 180
         angleDifference = 0
         closest = None
 
         for other in others:
             if self.isInRadius(other):
-                otherAngle = self.calculateAngle(self.img.get_rect(center = (self.x, self.y)), other.img.get_rect(center=(other.x, other.y)))
-                leftBound = (self.angle-self.vision_angle) %360
+                otherAngle = self.calculateAngle(self.img.get_rect(topleft = (self.x, self.y)).center, other.img.get_rect(topleft=(other.x, other.y)).center)
+                leftBound = (self.angle-self.vision_angle) % 360
                 rightBound = (self.angle+self.vision_angle) % 360
                 if self.isWithinVisionAngle(leftBound, rightBound, otherAngle):
-                    distanceToOther = math.dist(self.img.get_rect(center = (self.x, self.y)), other.img.get_rect(center=(other.x, other.y)))
-                    minDistance = distanceToOther
-                    angleDifference = self.calculateAngleDifference(self.angle, otherAngle)
-                    closest = other
+                    distanceToOther = math.dist(self.img.get_rect(topleft = (self.x, self.y)).center, other.img.get_rect(topleft=(other.x, other.y)).center)
+                    if distanceToOther < minDistance:
+                        minDistance = distanceToOther
+                        angleDifference = self.calculateAngleDifference(self.angle, otherAngle)
+                        closest = other
 
         return closest, minDistance, angleDifference
 
@@ -69,7 +70,7 @@ class Entity:
         return False
 
     def isWithinVisionAngle(self, leftBound, rightBound, angle):    
-        if (leftBound < -angle % 360  < rightBound) or (rightBound < leftBound and not(rightBound < -angle % 360  < leftBound)): 
+        if (leftBound < angle % 360  < rightBound) or (rightBound < leftBound and not(rightBound < angle % 360  < leftBound)): 
             return True
         return False    
 
@@ -91,7 +92,7 @@ class Entity:
             else:
                 return -90
         else:
-            return math.degrees(math.atan2(-1*(point2[1] - point1[1]), (point2[0] - point1[0])))
+            return math.degrees(math.atan2(1*(point2[1] - point1[1]), (point2[0] - point1[0])))
 
     def draw(self, surface):
         rotated_img = pygame.transform.rotate(self.img, -self.angle)
@@ -99,11 +100,20 @@ class Entity:
         self.rect = new_rect
         surface.blit(rotated_img, new_rect.center)
 
+    def drawVisionLines(self, surface):
+        center_x = self.img.get_rect(topleft = (self.x, self.y)).center[0]
+        center_y = self.img.get_rect(topleft = (self.x, self.y)).center[1]
+        x_end = center_x + 180 * math.cos(self.angle * math.pi / 180)
+        y_end = center_y + 180 * math.sin(self.angle * math.pi / 180)
+
         self.vision_rect = pygame.Rect(self.x-self.vision_radius*2*0.5+self.size[0]*0.5, self.y-self.vision_radius*2*0.5+self.size[0]*0.5, self.vision_radius*2, self.vision_radius*2)
-        #pygame.draw.arc(surface, (0,0,255), self.vision_rect, -(self.vision_angle*math.pi/180)-(self.angle*math.pi/180), (self.vision_angle*math.pi/180)-(self.angle*math.pi/180))
+        pygame.draw.arc(surface, (0,0,255), self.vision_rect, -(self.vision_angle*math.pi/180)-(self.angle*math.pi/180), (self.vision_angle*math.pi/180)-(self.angle*math.pi/180))
+        pygame.draw.line(surface, (0, 0,255), self.img.get_rect(topleft=(self.x, self.y)).center, (x_end, y_end), 2)
+
 
     def drawLineToClosestEntity(self, surface, closest):
-        pygame.draw.line(surface, (0, 0, 255), (self.x, self.y), (closest.x, closest.y), 2)
+        pygame.draw.rect(surface, (100, 100, 55),self.img.get_rect(topleft=(self.x, self.y)), 2)
+        pygame.draw.line(surface, (0, 0, 255), self.img.get_rect(topleft=(self.x, self.y)).center, closest.img.get_rect(topleft=(closest.x, closest.y)).center, 2)
 
 class Prey(Entity):
     def __init__(self):
@@ -119,7 +129,7 @@ class Predator(Entity):
         self.img = PREDATOR_IMG
         self.food_eaten = 0
         self.hunger = 0
-        self.vision_angle = 45
+        self.vision_angle = 60
         self.vision_radius = 180
         self.startTime = time.time()
 
@@ -128,7 +138,7 @@ class Predator(Entity):
             currentTime = time.time()
             elapsedTime = currentTime - self.startTime
 
-            if (elapsedTime >= 5):
+            if (elapsedTime >= 1):
                 self.increaseHunger()
                 self.startTime = currentTime
 

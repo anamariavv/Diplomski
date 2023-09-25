@@ -26,7 +26,7 @@
 - alternative approach: 1. train predator on static prey 2. train prey on predator that constantly chases them 3. train predator on dynamic prey 4. train prey against multiple predators 4. combine into one world to observe results
 
 
-### 22.9
+### 24.9
 - today i trained only predators on static prey. Both entites now move either left, right, or forward (those are the new nn outputs) and the new nn inputs are the distance to the closest prey and the angle difference to the closest prey
 - entities have a field of vision, predators have a more narrow but longer field of vision while prey have a wider but shorter field of vision
 - i should fix the closest prey lines, sometimes the predator holds a reference to the previous closest prey that was already eaten
@@ -37,3 +37,9 @@
 - at the end of eath generation, print all predators and the prey they've eaten, along with their fitness
 - change all code to camelCase cause its nicer
 - add energy/possibility to slow down
+
+
+### 25.9 
+- predators are eating, hell yeah
+- fine tune the angle range calculation
+- train the preys now
