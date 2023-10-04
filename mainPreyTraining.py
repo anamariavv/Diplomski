@@ -3,15 +3,12 @@ import pygame
 from Entity import *
 import neat
 import pickle
-import math
-import itertools
 import matplotlib.pyplot as plt
 
 WIDTH, HEIGHT = 1500, 1000
 BLACK = (0, 0, 0)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Predator training")
-
+pygame.display.set_caption("Prey training")
 
 def run(config_path):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -23,11 +20,8 @@ def run(config_path):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
 
-    winner = p.run(main,10)
+    winner = p.run(main, 200)
     print('\nBest genome:\n{!s}'.format(winner))
-    with open("winner.pkl", "wb") as f:
-        pickle.dump(winner,f)
-        f.close()
 
 def draw_screen(predators, preys):
     WIN.fill(BLACK)
@@ -54,8 +48,16 @@ def correct_position(x, y):
 
     return new_x, new_y
 
+    
+def check_die(preys, my_genomes, neural_networks):
+    for index, prey in enumerate(preys):
+        if prey.die == True:
+            my_genomes[index].fitness -= 20
+            preys.pop(index)
+            neural_networks.pop(index)
+            my_genomes.pop(index)    
 
-def check_food_eaten(predator, preys, my_genomes, predator_index):
+def check_food_eatenPredator(predator, preys, my_genomes, predator_index):
     for index, prey in enumerate(preys):
         if(predator.img.get_rect(topleft = (predator.x, predator.y)).colliderect(prey.img.get_rect(topleft = (prey.x, prey.y)))):
             predator.hunger -= 1
@@ -64,7 +66,7 @@ def check_food_eaten(predator, preys, my_genomes, predator_index):
             prey.die = True
             preys.pop(index)
     
-def check_die(predators, my_genomes, neural_networks):
+def check_diePredator(predators, my_genomes, neural_networks):
     for index, predator in enumerate(predators):
         if predator.die == True:
             my_genomes[index].fitness -= 20
@@ -72,20 +74,22 @@ def check_die(predators, my_genomes, neural_networks):
             neural_networks.pop(index)
             my_genomes.pop(index)      
 
+def rewardForSurvival(prey, my_genomes, index):
+    my_genomes[index].fitness += 0.01
 
 def setup_neat_variables(genomes, config):
     neural_networks = []
     my_genomes = []
-    predators = []
+    preys = []
 
     for _, g in genomes:
         new_network = neat.nn.FeedForwardNetwork.create(g, config)
         neural_networks.append(new_network)
-        predators.append(Predator())
+        preys.append(Prey())
         g.fitness = 0
         my_genomes.append(g)
 
-    return neural_networks, my_genomes, predators
+    return neural_networks, my_genomes, preys
 
 def drawAssistanceLines(predator, closest):
     predator.drawLineToClosestEntity(WIN, closest)
@@ -94,38 +98,85 @@ def drawAssistanceLines(predator, closest):
 
 def drawVisionLines(predators):
     for p in predators:
-        p.drawVisionLines(WIN)    
+        p.drawVisionLines(WIN)   
+
+def createPredatorsFromGenome():
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, 'neat-config.txt')
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)         
+    
+    predators = []
+    genomes = []
+    predatorNetworks = []
+
+    with open("winner.pkl", "rb") as f:
+        genome = pickle.load(f)
+        for _ in range(10):
+            genomes.append(genome)
+            predators.append(Predator())
+            predatorNetwork = neat.nn.FeedForwardNetwork.create(genome, config)
+            predatorNetworks.append(predatorNetwork)
+
+    return predatorNetworks, genomes, predators
 
 
-def main(genomes, config):
-    neural_networks, my_genomes, predators = setup_neat_variables(genomes, config)
-    preys = [Prey() for _ in range(50)]
+def main(predatorGenomes, config):
+    neural_networks, my_genomes, preys = setup_neat_variables(predatorGenomes, config)
+    predatorNetworks, predatorGenomes, predators = createPredatorsFromGenome()
    
     run = True
     clock = pygame.time.Clock()
-    
+
+    # for prey in preys:
+    #     prey.startSurvivalTimer()
+
     while run:
-        #Clock tick
         clock.tick(250)
 
-        #Check if user quit
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
 
         for predator in predators: 
-            predator.updateHungerTimer()
+            predator.updateHungerTimer()        
 
-        #End the generation if no entities are left
-        if len(predators) == 0:
+        if len(preys)== 0 or len(predators) == 0:
             run = False
             pass
+
+        for index, prey in enumerate(preys):
+            inputs = []
+
+            #prey.updateSurvivalTimer()
+            
+            rewardForSurvival(prey, my_genomes, index)
+
+            closest, distanceToThreat, angleToThreat = prey.getClosest(predators)    
+            if closest is not None:
+                drawAssistanceLines(prey, closest)
+                inputs.append(distanceToThreat)
+                inputs.append(angleToThreat)
+            else:
+                inputs.append(0)
+                inputs.append(180)
+        
+            outputs = neural_networks[index].activate((inputs))
+
+            if outputs[0] > 0.5:
+                prey.moveForward()
+            elif outputs[1] > 0.5:
+                prey.turn_left()
+            elif outputs[2] > 0.5:
+                prey.turn_right()    
+
+            prey.x, prey.y = correct_position(prey.x, prey.y)
+
+            check_die(preys, my_genomes, neural_networks)
 
         for index, predator in enumerate(predators):
             inputs = []
 
-            #Fill the input list for the neural network -> 2 inputs: distance and angle dif to closest food
             closest, distanceToPrey, angleToPrey = predator.getClosest(preys)    
             if closest is not None:
                 #drawAssistanceLines(predator, closest)
@@ -135,10 +186,8 @@ def main(genomes, config):
                 inputs.append(1000)
                 inputs.append(0)
         
-            #Get the outputs from the neural network (3 - left, right or forward)
-            outputs = neural_networks[index].activate((inputs))
+            outputs = predatorNetworks[index].activate((inputs))
 
-            #Move entity based on output
             if outputs[0] > 0.5:
                 predator.moveForward()
             elif outputs[1] > 0.5:
@@ -146,20 +195,17 @@ def main(genomes, config):
             elif outputs[2] > 0.5:
                 predator.turn_right()    
 
-            #Correct the position if they reach edge of screen -> teleport to other end
             predator.x, predator.y = correct_position(predator.x, predator.y)
 
-            #Check if entity has eaten anything or died in this frame
-            check_food_eaten(predator, preys, my_genomes, index)
-            check_die(predators, my_genomes, neural_networks)
-
+            check_food_eatenPredator(predator, preys, predatorGenomes, index)
+            check_diePredator(predators, predatorGenomes, neural_networks)    
+             
         draw_screen(predators, preys)
-        #drawVisionLines(predators)
 
-    for index, p in enumerate(predators):
-        print(f'-------Predator number {index} ate {p.food_eaten} preys and has a fitness of {my_genomes[index].fitness}---------')
+    for index, p in enumerate(preys):
+        print(f'-------Prey number {index} has a fitness of {my_genomes[index].fitness}---------')
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)
-    config_path = os.path.join(local_dir, 'neat-config.txt')
+    config_path = os.path.join(local_dir, 'neat-config-prey.txt')
     run(config_path)
