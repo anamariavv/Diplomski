@@ -1,6 +1,7 @@
 import os
 import pygame
 from Entity import *
+from UserInterface import *
 import neat
 import pickle
 import pygame_gui
@@ -11,9 +12,6 @@ pygame.init()
 WIDTH, HEIGHT = 1500, 1000
 BLACK = (0, 0, 0)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-
-gui_manager = pygame_gui.UIManager((WIDTH, HEIGHT))
-toggleLinesButton = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((1350, 0), (150, 50)), text='Toggle lines', manager=gui_manager)
 
 pygame.display.set_caption("Prey training")
 
@@ -33,7 +31,7 @@ def run(config_path):
         pickle.dump(winner,f)
         f.close()
 
-def draw_screen(predators, preys):
+def draw_screen(predators, preys, interface):
     WIN.fill(BLACK)
 
     for predator in predators:
@@ -42,8 +40,7 @@ def draw_screen(predators, preys):
     for prey in preys:
         prey.draw(WIN)
 
-    gui_manager.draw_ui(WIN)
-
+    interface.draw()
     pygame.display.update()
 
 def correct_position(x, y):
@@ -77,8 +74,8 @@ def setup_neat_variables(genomes, config):
 
     return neural_networks, my_genomes, preys
 
-def drawAssistanceLines(entity, closest, drawLines):
-    if drawLines == True:
+def drawAssistanceLines(entity, closest, interface):
+    if interface.drawLines == True:
         entity.drawLineToClosestEntity(WIN, closest)
         entity.drawVisionLines(WIN)
         pygame.display.update() 
@@ -123,26 +120,29 @@ def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes,
 def main(predatorGenomes, config):
     preyNetworks, preyGenomes, preys = setup_neat_variables(predatorGenomes, config)
     predatorNetworks, predatorGenomes, predators = createPredatorsFromGenome()
+    allEntities = predators + preys
     drawLines = False
+    interface = UserInterface(WIN, WIDTH, HEIGHT)
    
     run = True
     clock = pygame.time.Clock()
 
     while run:
-        time_delta = clock.tick()/1000.0
+        time_delta = clock.tick()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
 
-            if event.type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == toggleLinesButton:
-                    drawLines = not drawLines
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if pygame.mouse.get_pressed()[0]:
+                    mouseX, mouseY = pygame.mouse.get_pos()
+                    interface.checkClick(allEntities, mouseX, mouseY)
 
-            gui_manager.process_events(event)   
+            interface.processEvents(event) 
 
-        gui_manager.update(time_delta)      
+        interface.updateTimeDelta(time_delta) 
 
         for predator in predators: 
             predator.updateHungerTimer()        
@@ -156,7 +156,7 @@ def main(predatorGenomes, config):
 
             closest, distanceToPrey, angleToPrey = predator.getClosest(preys)    
             if closest is not None:
-                drawAssistanceLines(predator, closest, drawLines)
+                drawAssistanceLines(predator, closest, interface)
                 inputs.append(distanceToPrey)
                 inputs.append(angleToPrey)
             else:
@@ -184,7 +184,7 @@ def main(predatorGenomes, config):
 
             closest, distanceToThreat, angleToThreat = prey.getClosest(predators)    
             if closest is not None:
-                drawAssistanceLines(prey, closest, drawLines)
+                drawAssistanceLines(prey, closest, interface)
                 inputs.append(distanceToThreat)
                 inputs.append(angleToThreat)
             else:
@@ -202,7 +202,7 @@ def main(predatorGenomes, config):
 
             prey.x, prey.y = correct_position(prey.x, prey.y)
 
-        draw_screen(predators, preys)
+        draw_screen(predators, preys, interface)
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)

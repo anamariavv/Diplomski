@@ -18,7 +18,6 @@ MAX_HUNGER = 10
 HUNGER_STEP = 1
 VISION_RANGE = 200
 
-
 class Entity:
     def __init__(self):
         self.img = None
@@ -92,7 +91,12 @@ class Entity:
             else:
                 return -90
         else:
-            return math.degrees(math.atan2(1*(point2[1] - point1[1]), (point2[0] - point1[0])))
+            return math.degrees(math.atan2(1*(point2[1] - point1[1]), (point2[0] - point1[0])))  
+
+    def collidesWithPoint(self, x, y):
+        if self.rect.collidepoint(x, y):
+            return True
+        return False
 
     def draw(self, surface):
         rotated_img = pygame.transform.rotate(self.img, -self.angle)
@@ -110,10 +114,12 @@ class Entity:
         pygame.draw.arc(surface, (0,0,255), self.vision_rect, -(self.vision_angle*math.pi/180)-(self.angle*math.pi/180), (self.vision_angle*math.pi/180)-(self.angle*math.pi/180))
         pygame.draw.line(surface, (0, 0,255), self.img.get_rect(topleft=(self.x, self.y)).center, (x_end, y_end), 2)
 
-
     def drawLineToClosestEntity(self, surface, closest):
         pygame.draw.rect(surface, (100, 100, 55),self.img.get_rect(topleft=(self.x, self.y)), 2)
         pygame.draw.line(surface, (0, 0, 255), self.img.get_rect(topleft=(self.x, self.y)).center, closest.img.get_rect(topleft=(closest.x, closest.y)).center, 2)
+
+    def drawRectLines(self, surface):
+        pygame.draw.rect(surface, (255, 165, 0),self.img.get_rect(topleft=(self.x, self.y)), 5)
 
 class Prey(Entity):
     def __init__(self):
