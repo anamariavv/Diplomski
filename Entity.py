@@ -121,15 +121,6 @@ class Prey(Entity):
         self.vision_angle = 120
         self.vision_radius = 70
         self.img = PREY_IMG
-        self.startTime = 0
-
-    def startSurvivalTimer(self):
-        self.startTime = time.time()
-
-    def updateSurvivalTimer(self):
-        survivalTime = time.time() - self.startTime
-        if(survivalTime >= 20):
-            self.die = True
 
 class Predator(Entity):
     def __init__(self):

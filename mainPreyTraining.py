@@ -3,11 +3,18 @@ import pygame
 from Entity import *
 import neat
 import pickle
+import pygame_gui
 import matplotlib.pyplot as plt
+
+pygame.init()
 
 WIDTH, HEIGHT = 1500, 1000
 BLACK = (0, 0, 0)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+
+gui_manager = pygame_gui.UIManager((WIDTH, HEIGHT))
+toggleLinesButton = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((1350, 0), (150, 50)), text='Toggle lines', manager=gui_manager)
+
 pygame.display.set_caption("Prey training")
 
 def run(config_path):
@@ -22,6 +29,9 @@ def run(config_path):
 
     winner = p.run(main, 200)
     print('\nBest genome:\n{!s}'.format(winner))
+    with open("winnerPrey.pkl", "wb") as f:
+        pickle.dump(winner,f)
+        f.close()
 
 def draw_screen(predators, preys):
     WIN.fill(BLACK)
@@ -31,6 +41,8 @@ def draw_screen(predators, preys):
 
     for prey in preys:
         prey.draw(WIN)
+
+    gui_manager.draw_ui(WIN)
 
     pygame.display.update()
 
@@ -47,32 +59,6 @@ def correct_position(x, y):
         new_y = HEIGHT
 
     return new_x, new_y
-
-    
-def check_die(preys, my_genomes, neural_networks):
-    for index, prey in enumerate(preys):
-        if prey.die == True:
-            my_genomes[index].fitness -= 20
-            preys.pop(index)
-            neural_networks.pop(index)
-            my_genomes.pop(index)    
-
-def check_food_eatenPredator(predator, preys, my_genomes, predator_index):
-    for index, prey in enumerate(preys):
-        if(predator.img.get_rect(topleft = (predator.x, predator.y)).colliderect(prey.img.get_rect(topleft = (prey.x, prey.y)))):
-            predator.hunger -= 1
-            predator.food_eaten += 1
-            my_genomes[predator_index].fitness += 5
-            prey.die = True
-            preys.pop(index)
-    
-def check_diePredator(predators, my_genomes, neural_networks):
-    for index, predator in enumerate(predators):
-        if predator.die == True:
-            my_genomes[index].fitness -= 20
-            predators.pop(index)
-            neural_networks.pop(index)
-            my_genomes.pop(index)      
 
 def rewardForSurvival(prey, my_genomes, index):
     my_genomes[index].fitness += 0.01
@@ -91,14 +77,11 @@ def setup_neat_variables(genomes, config):
 
     return neural_networks, my_genomes, preys
 
-def drawAssistanceLines(predator, closest):
-    predator.drawLineToClosestEntity(WIN, closest)
-    predator.drawVisionLines(WIN)
-    pygame.display.update() 
-
-def drawVisionLines(predators):
-    for p in predators:
-        p.drawVisionLines(WIN)   
+def drawAssistanceLines(entity, closest, drawLines):
+    if drawLines == True:
+        entity.drawLineToClosestEntity(WIN, closest)
+        entity.drawVisionLines(WIN)
+        pygame.display.update() 
 
 def createPredatorsFromGenome():
     local_dir = os.path.dirname(__file__)
@@ -119,24 +102,47 @@ def createPredatorsFromGenome():
 
     return predatorNetworks, genomes, predators
 
+def checkDeath(predator, predators, predatorGenomes, predatorNetworks, index):
+    if predator.die == True:
+        predatorGenomes[index].fitness -= 20
+        predators.pop(index)
+        predatorNetworks.pop(index)
+        predatorGenomes.pop(index)   
+
+def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes, preyNetworks):
+    for preyIndex, prey in enumerate(preys):
+        if(predator.img.get_rect(topleft = (predator.x, predator.y)).colliderect(prey.img.get_rect(topleft = (prey.x, prey.y)))):
+            predator.hunger -= 1
+            predator.food_eaten += 1
+            predatorGenomes[predatorIndex].fitness += 5
+            prey.die = True
+            preys.pop(preyIndex),
+            preyGenomes[preyIndex].fitness -= 20
+            preyNetworks.pop(preyIndex)               
 
 def main(predatorGenomes, config):
-    neural_networks, my_genomes, preys = setup_neat_variables(predatorGenomes, config)
+    preyNetworks, preyGenomes, preys = setup_neat_variables(predatorGenomes, config)
     predatorNetworks, predatorGenomes, predators = createPredatorsFromGenome()
+    drawLines = False
    
     run = True
     clock = pygame.time.Clock()
 
-    # for prey in preys:
-    #     prey.startSurvivalTimer()
-
     while run:
-        clock.tick(250)
+        time_delta = clock.tick()/1000.0
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
+
+            if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == toggleLinesButton:
+                    drawLines = not drawLines
+
+            gui_manager.process_events(event)   
+
+        gui_manager.update(time_delta)      
 
         for predator in predators: 
             predator.updateHungerTimer()        
@@ -145,41 +151,12 @@ def main(predatorGenomes, config):
             run = False
             pass
 
-        for index, prey in enumerate(preys):
-            inputs = []
-
-            #prey.updateSurvivalTimer()
-            
-            rewardForSurvival(prey, my_genomes, index)
-
-            closest, distanceToThreat, angleToThreat = prey.getClosest(predators)    
-            if closest is not None:
-                drawAssistanceLines(prey, closest)
-                inputs.append(distanceToThreat)
-                inputs.append(angleToThreat)
-            else:
-                inputs.append(0)
-                inputs.append(180)
-        
-            outputs = neural_networks[index].activate((inputs))
-
-            if outputs[0] > 0.5:
-                prey.moveForward()
-            elif outputs[1] > 0.5:
-                prey.turn_left()
-            elif outputs[2] > 0.5:
-                prey.turn_right()    
-
-            prey.x, prey.y = correct_position(prey.x, prey.y)
-
-            check_die(preys, my_genomes, neural_networks)
-
         for index, predator in enumerate(predators):
             inputs = []
 
             closest, distanceToPrey, angleToPrey = predator.getClosest(preys)    
             if closest is not None:
-                #drawAssistanceLines(predator, closest)
+                drawAssistanceLines(predator, closest, drawLines)
                 inputs.append(distanceToPrey)
                 inputs.append(angleToPrey)
             else:
@@ -197,13 +174,35 @@ def main(predatorGenomes, config):
 
             predator.x, predator.y = correct_position(predator.x, predator.y)
 
-            check_food_eatenPredator(predator, preys, predatorGenomes, index)
-            check_diePredator(predators, predatorGenomes, neural_networks)    
-             
-        draw_screen(predators, preys)
+            checkFoodEaten(predator, preys, predatorGenomes, index, preyGenomes, preyNetworks)
+            checkDeath(predator, predators, predatorGenomes, predatorNetworks, index)   
 
-    for index, p in enumerate(preys):
-        print(f'-------Prey number {index} has a fitness of {my_genomes[index].fitness}---------')
+        for index, prey in enumerate(preys):
+            inputs = []
+            
+            rewardForSurvival(prey, preyGenomes, index)
+
+            closest, distanceToThreat, angleToThreat = prey.getClosest(predators)    
+            if closest is not None:
+                drawAssistanceLines(prey, closest, drawLines)
+                inputs.append(distanceToThreat)
+                inputs.append(angleToThreat)
+            else:
+                inputs.append(0)
+                inputs.append(180)
+        
+            outputs = preyNetworks[index].activate((inputs))
+
+            if outputs[0] > 0.5:
+                prey.moveForward()
+            elif outputs[1] > 0.5:
+                prey.turn_left()
+            elif outputs[2] > 0.5:
+                prey.turn_right()    
+
+            prey.x, prey.y = correct_position(prey.x, prey.y)
+
+        draw_screen(predators, preys)
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)
