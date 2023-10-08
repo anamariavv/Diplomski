@@ -1,0 +1,4 @@
+WIDTH, HEIGHT = 1500, 1000
+BLACK = (0, 0, 0)
+PREDATOR_TRAINING_TITLE = "Predator training"
+PREY_TRAINING_TITLE = "Prey training"

@@ -1,23 +1,21 @@
 import os
 import pygame
-from Entity import *
-from UserInterface import *
 import neat
 import pickle
+from prey import *
+from predator import *
+from constants import *
 from pygame.locals import *
+from entity import *
+from visualisation import *
 
 pygame.init()
 pygame.event.set_allowed([QUIT, MOUSEBUTTONUP])
-
-WIDTH, HEIGHT = 1500, 1000
-BLACK = (0, 0, 0)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Prey training")
+pygame.display.set_caption(PREY_TRAINING_TITLE)
 
 def run(config_path):
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         config_path)
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
 
     population = neat.Population(config)
     population.add_reporter(neat.StdOutReporter(True))
@@ -30,18 +28,6 @@ def run(config_path):
     with open("winnerPrey.pkl", "wb") as f:
         pickle.dump(winner,f)
         f.close()
-
-def draw_screen(predators, preys, interface):
-    WIN.fill(BLACK)
-
-    for predator in predators:
-        predator.draw(WIN)
-
-    for prey in preys:
-        prey.draw(WIN)
-
-    interface.draw()
-    pygame.display.update()
 
 def correct_position(x, y):
     new_x, new_y = x, y
@@ -116,19 +102,24 @@ def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes,
             prey.stopSurvivalTime()
             preys.pop(preyIndex),
             preyGenomes[preyIndex].fitness -= 20
-            preyNetworks.pop(preyIndex)               
+            preyNetworks.pop(preyIndex)                   
+
+def shouldRunMain(numberOfPreys, numberOfpredators):
+    if numberOfPreys == 0 or numberOfpredators == 0:
+        return False
+    return True    
 
 def main(genomes, config):
     preyNetworks, preyGenomes, preys = setup_neat_variables(genomes, config)
     predatorNetworks, predatorGenomes, predators = createPredatorsFromGenome()
     allEntities = predators + preys
-    interface = UserInterface(WIN, WIDTH, HEIGHT)
+    visualisation = Visualisation(WIN)
    
     run = True
     clock = pygame.time.Clock()
 
-    while run:
-        time_delta = clock.tick()/1000.0
+    while shouldRunMain(len(preys), len(predators)) and run:
+        timeDelta = clock.tick()/1000.0
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -137,28 +128,23 @@ def main(genomes, config):
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 mouseX, mouseY = pygame.mouse.get_pos()
-                interface.checkClick(allEntities, mouseX, mouseY)
+                visualisation.checkClickForUi(allEntities, mouseX, mouseY)
 
-            interface.processEvents(event) 
+            visualisation.processUiEvents(event)
 
-        interface.updateTimeDelta(time_delta) 
+        visualisation.updateTimeDelta(timeDelta)
 
         for predator in predators: 
             predator.updateHungerTimer()  
 
         for prey in preys:
             prey.updateSurvivalTime()          
-
-        if len(preys)== 0 or len(predators) == 0:
-            run = False
-            pass
-
+    
         for index, predator in enumerate(predators):
             inputs = []
 
             closest, distanceToPrey, angleToPrey = predator.getClosest(preys)    
             if closest is not None:
-                drawAssistanceLines(predator, closest, interface)
                 inputs.append(distanceToPrey)
                 inputs.append(angleToPrey)
             else:
@@ -187,7 +173,6 @@ def main(genomes, config):
 
             closest, distanceToThreat, angleToThreat = prey.getClosest(predators)    
             if closest is not None:
-                drawAssistanceLines(prey, closest, interface)
                 inputs.append(distanceToThreat)
                 inputs.append(angleToThreat)
             else:
@@ -205,7 +190,7 @@ def main(genomes, config):
 
             prey.x, prey.y = correct_position(prey.x, prey.y)
 
-        draw_screen(predators, preys, interface)
+        visualisation.drawSimulation(predators, preys)
 
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)

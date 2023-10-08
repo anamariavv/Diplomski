@@ -1,11 +1,10 @@
 import os
 import pygame
-from Entity import *
+from entity import *
+from prey import *
+from predator import *
 import neat
 import pickle
-import math
-import itertools
-import matplotlib.pyplot as plt
 
 WIDTH, HEIGHT = 1500, 1000
 BLACK = (0, 0, 0)

@@ -1,6 +1,8 @@
 import pygame
 import pygame_gui
-from Entity import *
+from entity import *
+from prey import *
+from predator import *
 
 class UserInterface:
     def __init__(self, surface, width, height):
@@ -13,6 +15,12 @@ class UserInterface:
 
     def setEntity(self, entity):
         self.entity = entity 
+
+    def drawAssistanceLines(self, entities):
+        if self.drawLines == True:
+            for entity in entities:
+                entity.drawLineToClosestEntity(self.surface)
+                entity.drawVisionLines(self.surface)
 
     def highlightActiveEntity(self):
         if self.entity is not None and self.entity.die == False:
@@ -43,11 +51,7 @@ class UserInterface:
                 entityFound = True
 
         if entityFound == False:
-            self.entity = None      
-
-    def draw(self):
-        self.uiManager.draw_ui(self.surface)   
-        self.highlightActiveEntity()      
+            self.entity = None    
 
     def processEvents(self, event):
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
@@ -57,5 +61,9 @@ class UserInterface:
         self.uiManager.process_events(event)  
 
     def updateTimeDelta(self, delta):
-        self.uiManager.update(delta)          
+        self.uiManager.update(delta)    
+
+    def draw(self):
+        self.uiManager.draw_ui(self.surface)   
+        self.highlightActiveEntity()              
 
