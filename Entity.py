@@ -6,17 +6,12 @@ from Sensor import *
 
 PREDATOR_IMG = pygame.image.load(os.path.join("assets", "predator.png"))
 PREY_IMG = pygame.image.load(os.path.join("assets", "prey.png"))
-FOOD_IMG = pygame.image.load(os.path.join("assets", "food.png"))
-FOOD_WIDTH = 20
-FOOD_HEIGHT = 20
 NUM_PREDATORS = 10
 NUM_PREYS = 10
-NUM_FOOD = 20
 WINDOW_HEIGHT = 1000
 WINDOW_WIDTH = 1500
 MAX_HUNGER = 10
 HUNGER_STEP = 1
-VISION_RANGE = 200
 
 class Entity:
     def __init__(self):
@@ -93,8 +88,8 @@ class Entity:
         else:
             return math.degrees(math.atan2(1*(point2[1] - point1[1]), (point2[0] - point1[0])))  
 
-    def collidesWithPoint(self, x, y):
-        if self.rect.collidepoint(x, y):
+    def collidesWithPoint(self, mouseX, mouseY):
+        if self.rect.collidepoint(mouseX, mouseY):
             return True
         return False
 
@@ -127,6 +122,18 @@ class Prey(Entity):
         self.vision_angle = 120
         self.vision_radius = 70
         self.img = PREY_IMG
+        self.spawnTime = time.time()
+        self.timeSurvived = 0
+
+    def startSurvivalTime(self):
+        self.spawnTime = time.time() 
+
+    def updateSurvivalTime(self):
+        if self.die == False:
+            self.timeSurvived = time.time() - self.spawnTime       
+
+    def stopSurvivalTime(self):
+        self.timeSurvived = time.time() - self.spawnTime
 
 class Predator(Entity):
     def __init__(self):
@@ -143,7 +150,7 @@ class Predator(Entity):
             currentTime = time.time()
             elapsedTime = currentTime - self.startTime
 
-            if (elapsedTime >= 1):
+            if (elapsedTime >= 2):
                 self.increaseHunger()
                 self.startTime = currentTime
 

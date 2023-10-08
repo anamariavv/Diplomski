@@ -4,15 +4,12 @@ from Entity import *
 from UserInterface import *
 import neat
 import pickle
-import pygame_gui
-import matplotlib.pyplot as plt
-
 pygame.init()
+pygame.event.set_allowed([QUIT, MOUSEBUTTONUP])
 
 WIDTH, HEIGHT = 1500, 1000
 BLACK = (0, 0, 0)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-
 pygame.display.set_caption("Prey training")
 
 def run(config_path):
@@ -20,12 +17,13 @@ def run(config_path):
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_path)
 
-    p = neat.Population(config)
-    p.add_reporter(neat.StdOutReporter(True))
+    population = neat.Population(config)
+    population.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
-    p.add_reporter(stats)
+    population.add_reporter(stats)
 
-    winner = p.run(main, 200)
+    winner = population.run(main, 200)
+    
     print('\nBest genome:\n{!s}'.format(winner))
     with open("winnerPrey.pkl", "wb") as f:
         pickle.dump(winner,f)
@@ -57,7 +55,7 @@ def correct_position(x, y):
 
     return new_x, new_y
 
-def rewardForSurvival(prey, my_genomes, index):
+def rewardForSurvival(my_genomes, index):
     my_genomes[index].fitness += 0.01
 
 def setup_neat_variables(genomes, config):
@@ -113,39 +111,41 @@ def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes,
             predator.food_eaten += 1
             predatorGenomes[predatorIndex].fitness += 5
             prey.die = True
+            prey.stopSurvivalTime()
             preys.pop(preyIndex),
             preyGenomes[preyIndex].fitness -= 20
             preyNetworks.pop(preyIndex)               
 
-def main(predatorGenomes, config):
-    preyNetworks, preyGenomes, preys = setup_neat_variables(predatorGenomes, config)
+def main(genomes, config):
+    preyNetworks, preyGenomes, preys = setup_neat_variables(genomes, config)
     predatorNetworks, predatorGenomes, predators = createPredatorsFromGenome()
     allEntities = predators + preys
-    drawLines = False
     interface = UserInterface(WIN, WIDTH, HEIGHT)
    
     run = True
     clock = pygame.time.Clock()
 
     while run:
-        time_delta = clock.tick()
+        time_delta = clock.tick()/1000.0
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.quit()
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if pygame.mouse.get_pressed()[0]:
-                    mouseX, mouseY = pygame.mouse.get_pos()
-                    interface.checkClick(allEntities, mouseX, mouseY)
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                mouseX, mouseY = pygame.mouse.get_pos()
+                interface.checkClick(allEntities, mouseX, mouseY)
 
             interface.processEvents(event) 
 
         interface.updateTimeDelta(time_delta) 
 
         for predator in predators: 
-            predator.updateHungerTimer()        
+            predator.updateHungerTimer()  
+
+        for prey in preys:
+            prey.updateSurvivalTime()          
 
         if len(preys)== 0 or len(predators) == 0:
             run = False
@@ -180,7 +180,8 @@ def main(predatorGenomes, config):
         for index, prey in enumerate(preys):
             inputs = []
             
-            rewardForSurvival(prey, preyGenomes, index)
+            prey.updateSurvivalTime()
+            rewardForSurvival(preyGenomes, index)
 
             closest, distanceToThreat, angleToThreat = prey.getClosest(predators)    
             if closest is not None:

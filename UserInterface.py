@@ -9,26 +9,31 @@ class UserInterface:
         self.drawLines = False
         self.uiManager = pygame_gui.UIManager((width, height))
         self.toggleLinesButton = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((1350, 0), (150, 50)), text='Toggle lines', manager=self.uiManager)
-        self.statisticsTextBox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((1350, 50), (150, 100)), html_text="<b>Statistics</b>", manager=self.uiManager)
+        self.statisticsTextBox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((1300, 50), (200, 100)), html_text="", wrap_to_height=True, manager=self.uiManager)
 
     def setEntity(self, entity):
         self.entity = entity 
 
     def highlightActiveEntity(self):
-        if self.entity is not None:
+        if self.entity is not None and self.entity.die == False:
             self.entity.drawRectLines(self.surface)
-            self.showStatistics
+            self.showStatistics()
+        else:
+            self.entity = None 
+            self.statisticsTextBox.hide()
 
     def showStatistics(self):
-        text = ""
+        text = "<b>Statistics</b> \n"
         if isinstance(self.entity, Predator):
-            text = f'Prey eaten: {self.entity.food_eaten}'
+            text += f'Prey eaten: {self.entity.food_eaten} \n'
+            text += f'Hunger: {self.entity.hunger}'
         else:
-            text = 'Time survived:'
+            text += "Time survived: {:.2f}s".format(self.entity.timeSurvived)
 
-        self.statisticsTextBox.clear_text_surface()  
-        self.statisticsTextBox.append_html_text(text)
-    
+        self.statisticsTextBox.clear_all_active_effects()
+        self.statisticsTextBox.set_text(text)
+        self.statisticsTextBox.show()
+        
     def checkClick(self, entities, mouseX, mouseY):
         entityFound = False
 
