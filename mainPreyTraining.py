@@ -4,6 +4,8 @@ from Entity import *
 from UserInterface import *
 import neat
 import pickle
+from pygame.locals import *
+
 pygame.init()
 pygame.event.set_allowed([QUIT, MOUSEBUTTONUP])
 
