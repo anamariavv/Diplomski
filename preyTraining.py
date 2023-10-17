@@ -8,17 +8,17 @@ from pygame.locals import *
 from entity import *
 from visualisation import *
 
-pygame.init()
-pygame.event.set_allowed([QUIT, MOUSEBUTTONUP])
-WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption(PREY_TRAINING_TITLE)
-
-def shouldRunMain(numberOfPreys, numberOfpredators):
+def shouldRun(numberOfPreys, numberOfpredators):
     if numberOfPreys == 0 or numberOfpredators == 0:
         return False
     return True    
 
-def main(genomes, config):
+def trainPreys(genomes, config):
+    pygame.init()
+    pygame.event.set_allowed([QUIT, MOUSEBUTTONUP])
+    WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption(PREY_TRAINING_TITLE)
+
     preyNetworks, preyGenomes, preys = neatUtils.createEntities(genomes, config, True)
     predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators()
     visualisation = Visualisation(WIN)
@@ -26,7 +26,7 @@ def main(genomes, config):
     run = True
     clock = pygame.time.Clock()
 
-    while shouldRunMain(len(preys), len(predators)) and run:
+    while shouldRun(len(preys), len(predators)) and run:
         timeDelta = clock.tick()/1000.0
 
         for event in pygame.event.get():
@@ -42,12 +42,7 @@ def main(genomes, config):
 
         visualisation.updateTimeDelta(timeDelta)
 
-        neatUtils.updatePredators(predators, predatorGenomes, predatorNetworks, preys, preyGenomes, preyNetworks, False)
+        neatUtils.updatePredators(predators, predatorGenomes, predatorNetworks, preys, False, preyGenomes, preyNetworks)
         neatUtils.updatePreys(preys, preyGenomes, preyNetworks, predators)
 
         visualisation.drawSimulation(predators, preys)
-
-if __name__ == "__main__":
-    local_dir = os.path.dirname(__file__)
-    configPath = os.path.join(local_dir, 'neat-config-prey.txt')
-    neatUtils.run(configPath, main, 200, "winnerPrey.pkl")

@@ -57,6 +57,24 @@ def createTrainedPredators():
 
     return predatorNetworks, genomes, predators
 
+def createTrainedPreys():
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, 'neat-config-prey.txt')
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)      
+
+    preys = []
+    genomes = []
+    preyNetworks = []
+
+    with open("winnerPrey.pkl", "rb") as f:
+        genome = pickle.load(f)
+        for _ in range(30):
+            genomes.append(genome)
+            preys.append(Prey())
+            preyNetwork = neat.nn.FeedForwardNetwork.create(genome, config)
+            preyNetworks.append(preyNetwork)
+
+    return preyNetworks, genomes, preys
 
 def correctPosition(currentX, currentY):
     newX, newY = currentX, currentY
@@ -94,13 +112,13 @@ def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes,
             preyNetworks.pop(preyIndex)
 
 def checkIdlePreyEaten(predator, preys, predatorGenomes, predatorIndex):
-    for index, prey in enumerate(preys):
-        if(predator.img.get_rect(topleft = (predator.x, predator.y)).colliderect(prey.img.get_rect(topleft = (prey.x, prey.y)))):
+    for preyIndex, prey in enumerate(preys):
+        if (predator.img.get_rect(topleft=(predator.x, predator.y)).colliderect(prey.img.get_rect(topleft=(prey.x, prey.y)))):
             predator.hunger -= 1
             predator.food_eaten += 1
             predatorGenomes[predatorIndex].fitness += 5
             prey.die = True
-            preys.pop(index)
+            preys.pop(preyIndex)
 
 def reward(genomes, index, amount):
     genomes[index].fitness += amount
@@ -116,7 +134,7 @@ def processOutputs(outputs, entity):
     elif outputs[2] > 0.5:
         entity.turn_right()
 
-def updatePredators(predators, predatorGenomes, predatorNetworks, preys, preyGenomes, preyNetworks, isPreyIdle):
+def updatePredators(predators, predatorGenomes, predatorNetworks, preys, isPreyIdle, preyGenomes, preyNetworks):
     for index, predator in enumerate(predators):
         inputs = []
 
@@ -136,9 +154,10 @@ def updatePredators(predators, predatorGenomes, predatorNetworks, preys, preyGen
         predator.x, predator.y = correctPosition(predator.x, predator.y)
 
         if isPreyIdle:
-            checkIdlePreyEaten(predators, preys, predatorGenomes, index)
+            checkIdlePreyEaten(predator, preys, predatorGenomes, index)
         else:    
-            checkFoodEaten(predator, preys, predatorGenomes,index, preyGenomes, preyNetworks)
+            checkFoodEaten(predator, preys, predatorGenomes, index, preyGenomes, preyNetworks)
+
         checkPredatorDeath(predator, predators,predatorGenomes, predatorNetworks, index)
 
 
