@@ -7,6 +7,7 @@ from constants import *
 from pygame.locals import *
 from entity import *
 from visualisation import *
+import pickle
 
 def shouldRun(numberOfPreys, numberOfpredators):
     if numberOfPreys == 0 or numberOfpredators == 0:
@@ -20,8 +21,10 @@ def trainPreys(genomes, config):
     pygame.display.set_caption(PREY_TRAINING_TITLE)
 
     preyNetworks, preyGenomes, preys = neatUtils.createEntities(genomes, config, True)
-    predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators()
+    predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators(30)
     visualisation = Visualisation(WIN)
+
+    maxFitness = 0
    
     run = True
     clock = pygame.time.Clock()
@@ -45,4 +48,12 @@ def trainPreys(genomes, config):
         neatUtils.updatePredators(predators, predatorGenomes, predatorNetworks, preys, False, preyGenomes, preyNetworks)
         neatUtils.updatePreys(preys, preyGenomes, preyNetworks, predators)
 
+        for index, prey in enumerate(preys):    
+            if preyGenomes[index].fitness > maxFitness:
+                maxFitness = preyGenomes[index].fitness   
+
         visualisation.drawSimulation(predators, preys)
+
+    with open("preyMaxFitness.txt", "a") as f:
+        formatted_number = "{:.2f}".format(maxFitness)
+        f.write(f'{formatted_number};') 

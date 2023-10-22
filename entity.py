@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
 import math
+import time
 
 WINDOW_HEIGHT = 1000
 WINDOW_WIDTH = 1500
@@ -15,10 +16,14 @@ class Entity:
         self.lineColor = (0,0,255)
         self.die = False
         self.closestEntity = None
+        self.fitness = 0
         self.size =(32,32)
         self.surface = pygame.Surface(self.size)
         self.rect = pygame.Rect(self.x, self.y, self.size[0], self.size[1])
         self.vision_rect = None
+        self.startTime = 0
+        self.canReproduce = False
+        self.reproduce = False
 
     def moveForward(self):
         self.x = self.x + self.velocity * math.cos(self.angle * math.pi / 180)
@@ -90,6 +95,16 @@ class Entity:
         if self.rect.collidepoint(mouseX, mouseY):
             return True
         return False
+
+    def startReproductionTimer(self):
+        self.startTime = time.time() 
+
+    def updateReproductionTimer(self):
+        timeElapsed = time.time() - self.startTime
+
+        if(timeElapsed >= 10):
+            self.canReproduce = True
+            self.startTime = time.time()     
 
     def draw(self, surface):
         rotated_img = pygame.transform.rotate(self.img, -self.angle)

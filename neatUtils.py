@@ -3,9 +3,12 @@ from prey import *
 from predator import *
 import neat
 import pickle
+import random
+import visualize
 
 def run(configPath, function, iterations, outFileName):
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, configPath)
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation, configPath)
 
     population = neat.Population(config)
     population.add_reporter(neat.StdOutReporter(True))
@@ -13,11 +16,17 @@ def run(configPath, function, iterations, outFileName):
     population.add_reporter(stats)
 
     winner = population.run(function, iterations)
-    
+
     print('\nBest genome:\n{!s}'.format(winner))
     with open(outFileName, "wb") as f:
-        pickle.dump(winner,f)
+        pickle.dump(winner, f)
         f.close()
+
+        node_names = {-1: 'distance', -2: 'angle', 0: 'forward', 1: 'left', 2: 'right'}
+
+        visualize.draw_net(config, winner, True, node_names=node_names)
+        visualize.plot_stats(stats, ylog=False, view=True)
+        visualize.plot_species(stats, view=True) 
 
 def createEntities(genomes, config, isPrey):
     neuralNetworks = []
@@ -30,14 +39,13 @@ def createEntities(genomes, config, isPrey):
         if isPrey:
             entities.append(Prey())
         else:
-            entities.append(Predator())   
+            entities.append(Predator())
         g.fitness = 0
         myGenomes.append(g)
 
     return neuralNetworks, myGenomes, entities
 
-
-def createTrainedPredators():
+def createTrainedPredators(n):
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'neat-config.txt')
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -47,9 +55,9 @@ def createTrainedPredators():
     genomes = []
     predatorNetworks = []
 
-    with open("winner.pkl", "rb") as f:
+    with open("winnerPredator.pkl", "rb") as f:
         genome = pickle.load(f)
-        for _ in range(10):
+        for _ in range(n):
             genomes.append(genome)
             predators.append(Predator())
             predatorNetwork = neat.nn.FeedForwardNetwork.create(genome, config)
@@ -57,10 +65,12 @@ def createTrainedPredators():
 
     return predatorNetworks, genomes, predators
 
-def createTrainedPreys():
+
+def createTrainedPreys(n):
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'neat-config-prey.txt')
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)      
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
 
     preys = []
     genomes = []
@@ -68,13 +78,14 @@ def createTrainedPreys():
 
     with open("winnerPrey.pkl", "rb") as f:
         genome = pickle.load(f)
-        for _ in range(30):
+        for _ in range(n):
             genomes.append(genome)
             preys.append(Prey())
             preyNetwork = neat.nn.FeedForwardNetwork.create(genome, config)
             preyNetworks.append(preyNetwork)
 
     return preyNetworks, genomes, preys
+
 
 def correctPosition(currentX, currentY):
     newX, newY = currentX, currentY
@@ -106,10 +117,11 @@ def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes,
             predator.food_eaten += 1
             predatorGenomes[predatorIndex].fitness += 5
             prey.die = True
+            preyGenomes[preyIndex].fitness -= 30
             prey.stopSurvivalTime()
             preys.pop(preyIndex),
-            preyGenomes[preyIndex].fitness -= 20
             preyNetworks.pop(preyIndex)
+
 
 def checkIdlePreyEaten(predator, preys, predatorGenomes, predatorIndex):
     for preyIndex, prey in enumerate(preys):
@@ -120,13 +132,16 @@ def checkIdlePreyEaten(predator, preys, predatorGenomes, predatorIndex):
             prey.die = True
             preys.pop(preyIndex)
 
+
 def reward(genomes, index, amount):
     genomes[index].fitness += amount
 
-def punish(genomes, index, amount):
-    genomes[index].fitness -= amount    
 
-def processOutputs(outputs, entity):       
+def punish(genomes, index, amount):
+    genomes[index].fitness -= amount
+
+
+def processOutputs(outputs, entity):
     if outputs[0] > 0.5:
         entity.moveForward()
     elif outputs[1] > 0.5:
@@ -155,11 +170,12 @@ def updatePredators(predators, predatorGenomes, predatorNetworks, preys, isPreyI
 
         if isPreyIdle:
             checkIdlePreyEaten(predator, preys, predatorGenomes, index)
-        else:    
-            checkFoodEaten(predator, preys, predatorGenomes, index, preyGenomes, preyNetworks)
+        else:
+            checkFoodEaten(predator, preys, predatorGenomes,
+                           index, preyGenomes, preyNetworks)
 
-        checkPredatorDeath(predator, predators,predatorGenomes, predatorNetworks, index)
-
+        checkPredatorDeath(predator, predators,
+                           predatorGenomes, predatorNetworks, index)
 
 def updatePreys(preys, preyGenomes, preyNetworks, predators):
     for index, prey in enumerate(preys):
@@ -168,16 +184,45 @@ def updatePreys(preys, preyGenomes, preyNetworks, predators):
         prey.updateSurvivalTime()
         reward(preyGenomes, index, 0.01)
 
-        closest, distanceToThreat, angleToThreat = prey.getClosest(
-            predators)
+        closest, distanceToThreat, angleToThreat = prey.getClosest(predators)
         if closest is not None:
             inputs.append(distanceToThreat)
             inputs.append(angleToThreat)
         else:
-            inputs.append(0)
+            inputs.append(1000)
             inputs.append(180)
 
         outputs = preyNetworks[index].activate((inputs))
         processOutputs(outputs, prey)
 
         prey.x, prey.y = correctPosition(prey.x, prey.y)
+
+def updateReproductionTimer(entities):
+    for e in entities:
+        e.updateReproductionTimer()        
+
+def checkReproductionChance(entity, entities, genomes, networks, isPrey):
+    if entity.canReproduce == True:
+        n = random.random()
+
+        if (n < 0.5):
+            if(isPrey and len(entities) > 0):
+                local_dir = os.path.dirname(__file__)
+                config_path = os.path.join(local_dir, 'neat-config-prey.txt')
+                config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
+                with open("winnerPrey.pkl", "rb") as f:
+                    genome = pickle.load(f)
+                    genomes.append(genome)
+                    networks.append(neat.nn.FeedForwardNetwork.create(genome, config))
+                    entities.append(Prey())
+            elif(not isPrey and len(entities) > 0):
+                local_dir = os.path.dirname(__file__)
+                config_path = os.path.join(local_dir, 'neat-config.txt')
+                config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
+                with open("winnerPredator.pkl", "rb") as f:
+                    genome = pickle.load(f)
+                    genomes.append(genome)
+                    networks.append(neat.nn.FeedForwardNetwork.create(genome, config))
+                    entities.append(Predator())
+
+    entity.canReproduce = False
