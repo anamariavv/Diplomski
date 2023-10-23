@@ -4,7 +4,7 @@ import pygame
 import os
 
 PREDATOR_IMG = pygame.image.load(os.path.join("assets", "predator.png"))
-MAX_HUNGER = 6
+MAX_HUNGER = 4
 HUNGER_STEP = 1
 
 class Predator(Entity):

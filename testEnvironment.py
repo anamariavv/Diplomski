@@ -61,9 +61,13 @@ def runTestEnvironment():
 
         visualisation.updateTimeDelta(timeDelta)
 
-        neatUtils.updatePredators(
-            predators, predatorGenomes, predatorNetworks, preys, False, preyGenomes, preyNetworks)
+        neatUtils.updatePredators(predators, predatorGenomes, predatorNetworks, preys, False, preyGenomes, preyNetworks)
+        for index, p in enumerate(predators):
+            neatUtils.checkPredatorDeath(p, predators, predatorGenomes, predatorNetworks, index)
         neatUtils.updatePreys(preys, preyGenomes, preyNetworks, predators)
+        for index, p in enumerate(preys):
+            neatUtils.checkPreyDeath(p, preys, index, preyGenomes, preyNetworks)
+
 
         neatUtils.updateReproductionTimer(predators)
         neatUtils.updateReproductionTimer(preys)
@@ -84,9 +88,9 @@ def runTestEnvironment():
         visualisation.drawSimulation(predators, preys)
 
     print('End!')
+
     plt.plot(np.array(iterations), np.array(numPredators), label='number of predators')
     plt.plot(np.array(iterations), np.array(numPreys), label='number of preys')
-
     plt.xlabel('Iterations')
     plt.ylabel('Number of entities')
     plt.legend()

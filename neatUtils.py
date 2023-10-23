@@ -7,8 +7,7 @@ import random
 import visualize
 
 def run(configPath, function, iterations, outFileName):
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation, configPath)
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, configPath)
 
     population = neat.Population(config)
     population.add_reporter(neat.StdOutReporter(True))
@@ -22,11 +21,11 @@ def run(configPath, function, iterations, outFileName):
         pickle.dump(winner, f)
         f.close()
 
-        node_names = {-1: 'distance', -2: 'angle', 0: 'forward', 1: 'left', 2: 'right'}
+        # node_names = {-1: 'distance', -2: 'angle', 0: 'forward', 1: 'left', 2: 'right'}
 
-        visualize.draw_net(config, winner, True, node_names=node_names)
-        visualize.plot_stats(stats, ylog=False, view=True)
-        visualize.plot_species(stats, view=True) 
+        # visualize.draw_net(config, winner, True, node_names=node_names)
+        # visualize.plot_stats(stats, ylog=False, view=True)
+        # visualize.plot_species(stats, view=True) 
 
 def createEntities(genomes, config, isPrey):
     neuralNetworks = []
@@ -104,11 +103,10 @@ def correctPosition(currentX, currentY):
 
 def checkPredatorDeath(predator, predators, predatorGenomes, predatorNetworks, index):
     if predator.die == True:
-        predatorGenomes[index].fitness -= 20
+        predatorGenomes[index].fitness -= 30
         predators.pop(index)
         predatorNetworks.pop(index)
         predatorGenomes.pop(index)
-
 
 def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes, preyNetworks):
     for preyIndex, prey in enumerate(preys):
@@ -117,11 +115,13 @@ def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes,
             predator.food_eaten += 1
             predatorGenomes[predatorIndex].fitness += 5
             prey.die = True
-            preyGenomes[preyIndex].fitness -= 30
-            prey.stopSurvivalTime()
-            preys.pop(preyIndex),
-            preyNetworks.pop(preyIndex)
 
+def checkPreyDeath(prey, preys, index, preyGenomes, preyNetworks):
+    if prey.die == True:  
+        preyGenomes[index].fitness -= 30
+        prey.stopSurvivalTime()
+        preys.pop(index),
+        preyNetworks.pop(index)
 
 def checkIdlePreyEaten(predator, preys, predatorGenomes, predatorIndex):
     for preyIndex, prey in enumerate(preys):
@@ -173,9 +173,6 @@ def updatePredators(predators, predatorGenomes, predatorNetworks, preys, isPreyI
         else:
             checkFoodEaten(predator, preys, predatorGenomes,
                            index, preyGenomes, preyNetworks)
-
-        checkPredatorDeath(predator, predators,
-                           predatorGenomes, predatorNetworks, index)
 
 def updatePreys(preys, preyGenomes, preyNetworks, predators):
     for index, prey in enumerate(preys):

@@ -17,7 +17,7 @@ def trainPredators(genomes, config):
     # pygame.display.set_caption(PREDATOR_TRAINING_TITLE)
     
     predatorNetworks, predatorGenomes, predators = neatUtils.createEntities(genomes, config, False)
-    preys = [Prey() for _ in range(30)]
+    preys = [Prey() for _ in range(20)]
     # visualisation = Visualisation(WIN)
 
     maxFitness = 0
