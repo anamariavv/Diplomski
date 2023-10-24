@@ -14,6 +14,28 @@ class Prey(Entity):
         self.lineColor = (199,21,133)
         self.spawnTime = time.time()
         self.timeSurvived = 0
+        self.energy = 50
+        self.canMove = False
+
+    def moveForward(self):
+        if self.energy  > 0  and self.canMove:
+            new_min = 0.5
+            new_max = 1.5
+
+            energyStandardized = ((self.energy - 0) / (50 - 0)) * (new_max - new_min) + new_min
+
+            self.x = self.x + energyStandardized * self.velocity * math.cos(self.angle * math.pi / 180)
+            self.y = self.y + energyStandardized * self.velocity * math.sin(self.angle * math.pi / 180)
+            self.energy -= 0.03
+        else:
+            self.canMove = False
+
+    def regenerateEnergy(self):
+        self.energy += 0.2
+
+        if self.energy >= 50:
+            self.canMove = True
+            self.energy = 50
 
     def startSurvivalTime(self):
         self.spawnTime = time.time() 

@@ -9,7 +9,7 @@ from entity import *
 from visualisation import *
 import matplotlib.pyplot as plt
 import numpy as np
-
+from scipy.interpolate import interp1d
 
 def shouldRun(numberOfPreys, numberOfpredators):
     if numberOfPreys == 0 or numberOfpredators == 0:
@@ -23,20 +23,17 @@ def runTestEnvironment():
     WIN = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(TEST_ENVIRONMENT_TITLE)
 
-    preyNetworks, preyGenomes, preys = neatUtils.createTrainedPreys(30)
-    predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators(
-        10)
+    preyNetworks, preyGenomes, preys = neatUtils.createTrainedPreys(20)
+    predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators(10)
     visualisation = Visualisation(WIN)
 
     run = True
     clock = pygame.time.Clock()
-    iterations = []
+
     numPreys = []
     numPreys.append(len(preys))
     numPredators = []
     numPredators.append(len(predators))
-    loop = 1
-    iterations.append(loop)
 
     for p in preys:
         p.startReproductionTimer()
@@ -68,7 +65,6 @@ def runTestEnvironment():
         for index, p in enumerate(preys):
             neatUtils.checkPreyDeath(p, preys, index, preyGenomes, preyNetworks)
 
-
         neatUtils.updateReproductionTimer(predators)
         neatUtils.updateReproductionTimer(preys)
 
@@ -82,16 +78,28 @@ def runTestEnvironment():
 
         numPredators.append(len(predators))
         numPreys.append(len(preys))
-        loop += 1
-        iterations.append(loop)
-
         visualisation.drawSimulation(predators, preys)
 
     print('End!')
 
-    plt.plot(np.array(iterations), np.array(numPredators), label='number of predators')
-    plt.plot(np.array(iterations), np.array(numPreys), label='number of preys')
-    plt.xlabel('Iterations')
+    #generate x which is just number of the iteration, same for predators and preys
+    x1 = np.linspace(0, len(numPredators), len(numPredators))
+
+    y1_data = np.array(numPredators)
+    y2_data= np.array(numPreys)
+    cubic_interpolation_model_1 = interp1d(x1, y1_data, kind = "cubic")
+    cubic_interpolation_model_2 = interp1d(x1, y2_data, kind = "cubic")
+    
+    X = np.linspace(x1.min(), x1.max(), 500)
+    y1 = cubic_interpolation_model_1(X) 
+    y2 = cubic_interpolation_model_2(X)
+
+    plt.figure()
+    
+    plt.plot(X, y1, label='number of predators')
+    plt.plot(X, y2, label='number of preys')
+    plt.xlabel('Iteration')
     plt.ylabel('Number of entities')
     plt.legend()
+    plt.savefig('numberOfPredatorsAndPreys.png')
     plt.show()

@@ -29,6 +29,10 @@ class Entity:
         self.x = self.x + self.velocity * math.cos(self.angle * math.pi / 180)
         self.y = self.y + self.velocity * math.sin(self.angle * math.pi / 180)
 
+    def stayInPlace(self):
+        self.x = self.x
+        self.y = self.y
+
     def turn_left(self):
         self.angle -= 5
         self.angle %= 360
@@ -102,7 +106,7 @@ class Entity:
     def updateReproductionTimer(self):
         timeElapsed = time.time() - self.startTime
 
-        if(timeElapsed >= 10):
+        if(timeElapsed >= 5):
             self.canReproduce = True
             self.startTime = time.time()     
 
