@@ -35,9 +35,7 @@ class UserInterface:
         if isinstance(self.entity, Predator):
             text += f'Prey eaten: {self.entity.food_eaten} \n'
             text += f'Hunger: {self.entity.hunger} \n'
-            text += f'Energy: {self.entity.energy}' 
         else:
-            text += f'Energy: {self.entity.energy} \n' 
             text += "Time survived: {:.2f}s".format(self.entity.timeSurvived)
 
         self.statisticsTextBox.clear_all_active_effects()

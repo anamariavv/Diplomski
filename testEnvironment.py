@@ -58,12 +58,17 @@ def runTestEnvironment():
 
         visualisation.updateTimeDelta(timeDelta)
 
-        neatUtils.updatePredators(predators, predatorGenomes, predatorNetworks, preys, False, preyGenomes, preyNetworks)
+        neatUtils.updatePredators(predators, predatorNetworks, preys)
+
         for index, p in enumerate(predators):
-            neatUtils.checkPredatorDeath(p, predators, predatorGenomes, predatorNetworks, index)
+            neatUtils.checkFoodEaten(p, preys, predatorGenomes, index)
+            
+        neatUtils.checkPredatorDeaths(predators, predatorGenomes, predatorNetworks)
+
         neatUtils.updatePreys(preys, preyGenomes, preyNetworks, predators)
+
         for index, p in enumerate(preys):
-            neatUtils.checkPreyDeath(p, preys, index, preyGenomes, preyNetworks)
+            preys = neatUtils.checkPreyDeath(preys, preyGenomes, preyNetworks)  
 
         neatUtils.updateReproductionTimer(predators)
         neatUtils.updateReproductionTimer(preys)

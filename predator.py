@@ -16,28 +16,10 @@ class Predator(Entity):
         self.vision_angle = 60
         self.vision_radius = 180
         self.hungerStartTime = time.time()
-        self.energy = 50
-        self.canMove = False
 
     def moveForward(self):
-        if self.energy > 0:
-            new_min = 0.5
-            new_max = 1.5
-
-            energyStandardized = ((self.energy - 0) / (50 - 0)) * (new_max - new_min) + new_min
-
-            self.x = self.x + energyStandardized * self.velocity * math.cos(self.angle * math.pi / 180)
-            self.y = self.y + energyStandardized * self.velocity * math.sin(self.angle * math.pi / 180)
-            self.energy -= 0.01  
-        else:
-            self.canMove = False 
-    
-    def regenerateEnergy(self):
-        self.energy += 0.3
-
-        if self.energy >= 50:
-            self.canMove = True
-            self.energy = 50             
+        self.x = self.x + 1.2*self.velocity * math.cos(self.angle * math.pi / 180)
+        self.y = self.y + 1.2*self.velocity * math.sin(self.angle * math.pi / 180)
 
     def updateHungerTimer(self):
         if (self.die == False):

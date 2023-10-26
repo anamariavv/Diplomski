@@ -5,6 +5,7 @@ import neat
 import pickle
 import random
 import visualize
+from neat import math_util
 
 def run(configPath, function, iterations, outFileName):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, configPath)
@@ -21,11 +22,10 @@ def run(configPath, function, iterations, outFileName):
         pickle.dump(winner, f)
         f.close()
 
-        # node_names = {-1: 'distance', -2: 'angle', 0: 'forward', 1: 'left', 2: 'right'}
+        node_names = {-1: 'distance', -2: 'angle', 0: 'forward', 1: 'left', 2: 'right'}
 
-        # visualize.draw_net(config, winner, True, node_names=node_names)
-        # visualize.plot_stats(stats, ylog=False, view=True)
-        # visualize.plot_species(stats, view=True) 
+        visualize.draw_net(config, winner, True, node_names=node_names)
+        visualize.plot_species(stats, view=True) 
 
 def createEntities(genomes, config, isPrey):
     neuralNetworks = []
@@ -101,73 +101,76 @@ def correctPosition(currentX, currentY):
     return newX, newY
 
 
-def checkPredatorDeath(predator, predators, predatorGenomes, predatorNetworks, index):
-    if predator.die == True:
-        predatorGenomes[index].fitness -= 30
-        predators.pop(index)
-        predatorNetworks.pop(index)
-        predatorGenomes.pop(index)
+def checkPredatorDeaths(predators, predatorGenomes, predatorNetworks):
+    deadPredators = []
 
-def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex, preyGenomes, preyNetworks):
+    for index, p in enumerate(predators):
+        if p.die == True:
+            predatorGenomes[index].fitness -= 30
+            deadPredators.append(index)
+
+    for i in reversed(deadPredators):
+        predators.pop(i)
+        predatorNetworks.pop(i)
+        predatorGenomes.pop(i)
+
+    return predators    
+            
+
+def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex):
     for preyIndex, prey in enumerate(preys):
         if (predator.img.get_rect(topleft=(predator.x, predator.y)).colliderect(prey.img.get_rect(topleft=(prey.x, prey.y)))):
             predator.hunger -= 1
-            predator.food_eaten += 1
-            if predator.energy + 5 < 50:
-                predator.energy += 5
-            else:
-                predator.energy = 50    
+            predator.food_eaten += 1  
             predatorGenomes[predatorIndex].fitness += 5
             prey.die = True
 
-def checkPreyDeath(prey, preys, index, preyGenomes, preyNetworks):
-    if prey.die == True:  
-        preyGenomes[index].fitness -= 30
-        prey.stopSurvivalTime()
-        preys.pop(index),
-        preyNetworks.pop(index)
+def checkPreyDeath(preys, preyGenomes, preyNetworks):
+    deadPreys = []
+
+    for index, p in enumerate(preys):
+        if p.die == True:  
+            preyGenomes[index].fitness -= 30
+            deadPreys.append(index)
+
+    for i in reversed(deadPreys):
+        preys.pop(i)   
+        preyNetworks.pop(i) 
+        preyGenomes.pop(i)
+
+    return preys         
+
 
 def checkIdlePreyEaten(predator, preys, predatorGenomes, predatorIndex):
+    deadPreys = []
+
     for preyIndex, prey in enumerate(preys):
         if (predator.img.get_rect(topleft=(predator.x, predator.y)).colliderect(prey.img.get_rect(topleft=(prey.x, prey.y)))):
             predator.hunger -= 1
             predator.food_eaten += 1
-            predatorGenomes[predatorIndex].fitness += 5
-            if predator.energy + 5 < 50:
-                predator.energy += 5
-            else:
-                predator.energy = 50    
+            predatorGenomes[predatorIndex].fitness += 5    
             prey.die = True
-            preys.pop(preyIndex)
+            deadPreys.append(preyIndex)
+    
+    for i in reversed(deadPreys):
+        preys.pop(i)
+
+    return preys    
 
 
 def reward(genomes, index, amount):
     genomes[index].fitness += amount
 
-
-def punish(genomes, index, amount):
-    genomes[index].fitness -= amount
-
-
 def processOutputs(outputs, entity):
+
     if outputs[0] > 0.5:
         entity.moveForward()
-    elif outputs[1] > 0.5:
+    if outputs[1] > 0.5:
         entity.turn_left()
     elif outputs[2] > 0.5:
         entity.turn_right()
 
-def processOutputsPrey(outputs,entity):
-    if outputs[0] > 0.5:
-        entity.moveForward()
-    elif outputs[1] > 0.5:
-        entity.turn_left()
-    elif outputs[2] > 0.5:
-        entity.turn_right()
-    elif outputs[3] > 0.5:
-        return
-
-def updatePredators(predators, predatorGenomes, predatorNetworks, preys, isPreyIdle, preyGenomes, preyNetworks):
+def updatePredators(predators, predatorNetworks, preys):
     for index, predator in enumerate(predators):
         inputs = []
 
@@ -179,18 +182,12 @@ def updatePredators(predators, predatorGenomes, predatorNetworks, preys, isPreyI
             inputs.append(angleToPrey)
         else:
             inputs.append(1000)
-            inputs.append(0)
+            inputs.append(180)
 
         outputs = predatorNetworks[index].activate((inputs))
         processOutputs(outputs, predator)
 
         predator.x, predator.y = correctPosition(predator.x, predator.y)
-
-        if isPreyIdle:
-            checkIdlePreyEaten(predator, preys, predatorGenomes, index)
-        else:
-            checkFoodEaten(predator, preys, predatorGenomes,
-                           index, preyGenomes, preyNetworks)
 
 def updatePreys(preys, preyGenomes, preyNetworks, predators):
     for index, prey in enumerate(preys):
@@ -198,9 +195,6 @@ def updatePreys(preys, preyGenomes, preyNetworks, predators):
 
         prey.updateSurvivalTime()
         reward(preyGenomes, index, 0.01)
-
-        if prey.canMove == False:
-            prey.regenerateEnergy()
 
         closest, distanceToThreat, angleToThreat = prey.getClosest(predators)
         if closest is not None:
@@ -210,10 +204,8 @@ def updatePreys(preys, preyGenomes, preyNetworks, predators):
             inputs.append(1000)
             inputs.append(180)
         
-        inputs.append(prey.energy)
-
         outputs = preyNetworks[index].activate((inputs))       
-        processOutputsPrey(outputs, prey)
+        processOutputs(outputs, prey)
 
         prey.x, prey.y = correctPosition(prey.x, prey.y)
 

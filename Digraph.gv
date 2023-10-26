@@ -1,0 +1,11 @@
+digraph {
+	node [fontsize=9 height=0.2 shape=circle width=0.2]
+	distance [fillcolor=lightgray shape=box style=filled]
+	angle [fillcolor=lightgray shape=box style=filled]
+	forward [fillcolor=lightblue style=filled]
+	left [fillcolor=lightblue style=filled]
+	right [fillcolor=lightblue style=filled]
+	distance -> forward [color=green penwidth=0.6302231232247979 style=solid]
+	distance -> left [color=red penwidth=0.5162550999738611 style=solid]
+	angle -> right [color=red penwidth=0.35904290614475975 style=solid]
+}
