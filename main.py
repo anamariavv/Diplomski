@@ -7,77 +7,129 @@ maxPredatorFitnessList = []
 maxPreyFitnessList = []
 minPredatorFitnessList = []
 minPreyFitnessList = []
-numIterations = 20
+minPreyFitness = 1000
+minPredatorFitness = 1000
+numIterations = 50
 
-def trainPreys(genomes, config):
-    preyNetworks, preyGenomes, preys = neatUtils.createEntities(genomes, config, True)
+def trainPreys(preyGenomes, config):
+    pygame.init()
+    pygame.event.set_allowed([QUIT, MOUSEBUTTONUP])
+    WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption(PREY_TRAINING_TITLE)
+
+    preyNetworks, preys = neatUtils.createEntities(preyGenomes, config, True)
     predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators(20)
+
+    visualisation = Visualisation(WIN)
 
     global minPreyFitnessList
     global maxPreyFitnessList
-
-    maxPreyFitness = 0
-    minPreyFitness = 1000
-
+    global minPreyFitness
+ 
     run = True
     clock = pygame.time.Clock()
 
     while shouldRun(len(preys), len(predators)) and run:
         timeDelta = clock.tick()/1000.0
 
-        neatUtils.updatePredators(predators, predatorNetworks, preys)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                mouseX, mouseY = pygame.mouse.get_pos()
+                visualisation.checkClickForUi(preys, mouseX, mouseY)
+
+            visualisation.processUiEvents(event)
+
+        visualisation.updateTimeDelta(timeDelta)
+
+        neatUtils.updateTrainedPredators(predators, predatorGenomes, predatorNetworks, preys)
         for index, p in enumerate(predators):
             neatUtils.checkFoodEaten(p, preys, predatorGenomes, index)
 
-        predators = neatUtils.checkPredatorDeaths(predators, predatorGenomes, predatorNetworks)
-            
+        neatUtils.checkTrainedPredatorDeaths(predators, predatorGenomes, predatorNetworks)
         neatUtils.updatePreys(preys, preyGenomes, preyNetworks, predators)
+
         for index, p in enumerate(preys):
             if p.die == True:
-                if preyGenomes[index].fitness < minPreyFitness:
-                    minPreyFitness = preyGenomes[index].fitness
-                if preyGenomes[index].fitness > maxPreyFitness:
-                    maxPreyFitness = preyGenomes[index].fitness   
-        preys = neatUtils.checkPreyDeath(preys, preyGenomes, preyNetworks)    
+                if preyGenomes[index][1].fitness < minPreyFitness:
+                    minPreyFitness = preyGenomes[index][1].fitness
+                if preyGenomes[index][1].fitness > maxPreyFitnessList[-1]:
+                    maxPreyFitness = preyGenomes[index][1].fitness  
+                    maxPreyFitnessList.append(maxPreyFitness)  
+                    # with open("winnerPrey.pkl", "wb") as f:
+                    #     pickle.dump(preyGenomes[index], f)
+                    #     f.close()
+        neatUtils.checkPreyDeath(preys, preyGenomes, preyNetworks)  
+        
+        visualisation.drawSimulation(predators, preys)   
              
-    maxPreyFitnessList.append(maxPreyFitness)  
     minPreyFitnessList.append(minPreyFitness)  
 
 def trainPredators(genomes, config):
-    predatorNetworks, predatorGenomes, predators = neatUtils.createEntities(genomes, config, False)
-    preys = [Prey() for _ in range(40)]
+    pygame.init()
+    pygame.event.set_allowed([QUIT, MOUSEBUTTONUP])
+    WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption(PREDATOR_TRAINING_TITLE)
+
+    predatorNetworks, predators = neatUtils.createEntities(genomes, config, False)
+    preys = [Prey() for _ in range(20)]
+
+    visualisation = Visualisation(WIN)
 
     global minPredatorFitnessList 
     global maxPredatorFitnessList
-
-    maxPredatorFitness = 0
-    minPredatorFitness = 1000
+    global maxPredatorFitness
+    global minPredatorFitness
 
     run = True
     clock = pygame.time.Clock()
     while run and (len(predators) > 0):
         timeDelta = clock.tick()/1000.0
 
-        neatUtils.updatePredators(predators, predatorNetworks, preys)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                mouseX, mouseY = pygame.mouse.get_pos()
+                visualisation.checkClickForUi(preys, mouseX, mouseY)
+
+            visualisation.processUiEvents(event)
+
+        visualisation.updateTimeDelta(timeDelta)
+        
+        neatUtils.updatePredators(predators, genomes, predatorNetworks, preys)
 
         for index, p in enumerate(predators):
-            preys = neatUtils.checkIdlePreyEaten(p, preys, predatorGenomes, index)
+            preys = neatUtils.checkIdlePreyEaten(p, preys, genomes, index)
             if p.die == True:
-                if predatorGenomes[index].fitness < minPredatorFitness:
-                    minPredatorFitness = predatorGenomes[index].fitness
-                if predatorGenomes[index].fitness > maxPredatorFitness:
-                    maxPredatorFitness = predatorGenomes[index].fitness  
-        
-        predators = neatUtils.checkPredatorDeaths(predators, predatorGenomes, predatorNetworks)
-            
-           
-    minPredatorFitnessList.append(minPredatorFitness)
-    maxPredatorFitnessList.append(maxPredatorFitness)    
+                if genomes[index][1].fitness < minPredatorFitness:
+                    minPredatorFitness = genomes[index][1].fitness
+                if genomes[index][1].fitness > maxPredatorFitnessList[-1]:
+                    maxPredatorFitness = genomes[index][1].fitness  
+                    maxPredatorFitnessList.append(maxPredatorFitness) 
+                    # with open("winnerPredator.pkl", "wb") as f:
+                    #     pickle.dump(genomes[index], f)
+                    #     f.close()
+                    
+        neatUtils.checkPredatorDeaths(predators, genomes, predatorNetworks)
 
+        visualisation.drawSimulation(predators, preys) 
+            
+    minPredatorFitnessList.append(minPredatorFitness)
+       
 
 def main():
     local_dir = os.path.dirname(__file__)
-    # configPath = os.path.join(local_dir, PREDATOR_CONFIG_FILE)
+    configPath = os.path.join(local_dir, PREDATOR_CONFIG_FILE)
+    global maxPreyFitnessList
+    maxPreyFitnessList.append(0)
+    maxPredatorFitnessList.append(0)
+
     # neatUtils.run(configPath, trainPredators, numIterations, "winnerPredator.pkl")
 
     # with open("winnerPredator.pkl", "rb") as f:
@@ -92,7 +144,6 @@ def main():
     #     print(f'best prey genome {genome}')
 
     # plt.figure()
-
     # x = np.linspace(0, numIterations, numIterations)
     # plt.plot(x, np.array(maxPredatorFitnessList), label='Max predator fitness')    
     # plt.plot(x, np.array(minPredatorFitnessList), label='Min predator fitness')   
@@ -100,15 +151,14 @@ def main():
     # plt.ylabel('Fitness')
     # plt.legend()
     # plt.savefig('predatorFitness.png')
-    # plt.show() 
 
+    # plt.figure()
     # plt.plot(x, np.array(maxPreyFitnessList), label='Max prey fitness')    
     # plt.plot(x, np.array(minPreyFitnessList), label='Min prey fitness')   
     # plt.xlabel('Generation')
     # plt.ylabel('Fitness (survival time)')
     # plt.legend()
     # plt.savefig('preyFitness.png')
-    # plt.show() 
 
     runTestEnvironment()
 

@@ -23,8 +23,8 @@ def runTestEnvironment():
     WIN = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(TEST_ENVIRONMENT_TITLE)
 
-    preyNetworks, preyGenomes, preys = neatUtils.createTrainedPreys(20)
-    predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators(10)
+    preyNetworks, preyGenomes, preys = neatUtils.createTrainedPreys(50)
+    predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators(5)
     visualisation = Visualisation(WIN)
 
     run = True
@@ -58,17 +58,17 @@ def runTestEnvironment():
 
         visualisation.updateTimeDelta(timeDelta)
 
-        neatUtils.updatePredators(predators, predatorNetworks, preys)
+        neatUtils.updateTrainedPredators(predators, predatorGenomes, predatorNetworks, preys)
 
         for index, p in enumerate(predators):
             neatUtils.checkFoodEaten(p, preys, predatorGenomes, index)
             
-        neatUtils.checkPredatorDeaths(predators, predatorGenomes, predatorNetworks)
+        neatUtils.checkTrainedPredatorDeaths(predators, predatorGenomes, predatorNetworks)
 
-        neatUtils.updatePreys(preys, preyGenomes, preyNetworks, predators)
+        neatUtils.updateTrainedPreys(preys, preyGenomes, preyNetworks, predators)
 
         for index, p in enumerate(preys):
-            preys = neatUtils.checkPreyDeath(preys, preyGenomes, preyNetworks)  
+            preys = neatUtils.checkTrainedPreyDeath(preys, preyGenomes, preyNetworks)  
 
         neatUtils.updateReproductionTimer(predators)
         neatUtils.updateReproductionTimer(preys)
@@ -87,7 +87,6 @@ def runTestEnvironment():
 
     print('End!')
 
-    #generate x which is just number of the iteration, same for predators and preys
     x1 = np.linspace(0, len(numPredators), len(numPredators))
 
     y1_data = np.array(numPredators)

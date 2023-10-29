@@ -14,12 +14,14 @@ class Predator(Entity):
         self.food_eaten = 0
         self.hunger = 0
         self.vision_angle = 60
-        self.vision_radius = 180
+        self.vision_radius = 250
+        self.angleToClosest = 0
+        self.distanceToClosest = self.vision_radius+1
         self.hungerStartTime = time.time()
 
     def moveForward(self):
-        self.x = self.x + 1.2*self.velocity * math.cos(self.angle * math.pi / 180)
-        self.y = self.y + 1.2*self.velocity * math.sin(self.angle * math.pi / 180)
+        self.x = self.x + self.velocity * math.cos(self.angle * math.pi / 180)
+        self.y = self.y + self.velocity * math.sin(self.angle * math.pi / 180)
 
     def updateHungerTimer(self):
         if (self.die == False):

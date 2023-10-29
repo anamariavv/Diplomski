@@ -22,14 +22,13 @@ def run(configPath, function, iterations, outFileName):
         pickle.dump(winner, f)
         f.close()
 
-        node_names = {-1: 'distance', -2: 'angle', 0: 'forward', 1: 'left', 2: 'right'}
+        # node_names = {-1: 'distance', -2: 'angle', 0: 'forward', 1: 'left', 2: 'right'}
 
-        visualize.draw_net(config, winner, True, node_names=node_names)
-        visualize.plot_species(stats, view=True) 
+        # visualize.draw_net(config, winner, True, node_names=node_names)
+        # visualize.plot_species(stats, view=True) 
 
 def createEntities(genomes, config, isPrey):
     neuralNetworks = []
-    myGenomes = []
     entities = []
 
     for _, g in genomes:
@@ -40,9 +39,8 @@ def createEntities(genomes, config, isPrey):
         else:
             entities.append(Predator())
         g.fitness = 0
-        myGenomes.append(g)
 
-    return neuralNetworks, myGenomes, entities
+    return neuralNetworks, entities
 
 def createTrainedPredators(n):
     local_dir = os.path.dirname(__file__)
@@ -106,7 +104,7 @@ def checkPredatorDeaths(predators, predatorGenomes, predatorNetworks):
 
     for index, p in enumerate(predators):
         if p.die == True:
-            predatorGenomes[index].fitness -= 30
+            predatorGenomes[index][1].fitness -=30
             deadPredators.append(index)
 
     for i in reversed(deadPredators):
@@ -116,21 +114,52 @@ def checkPredatorDeaths(predators, predatorGenomes, predatorNetworks):
 
     return predators    
             
+def checkTrainedPredatorDeaths(predators, predatorGenomes, predatorNetworks):
+    deadPredators = []
+
+    for index, p in enumerate(predators):
+        if p.die == True:
+            predatorGenomes[index].fitness -= 30
+            deadPredators.append(index)
+
+    for i in reversed(deadPredators):
+        predators.pop(i)
+        predatorNetworks.pop(i)
+        predatorGenomes.pop(i)
+
+    return predators    
 
 def checkFoodEaten(predator, preys, predatorGenomes, predatorIndex):
     for preyIndex, prey in enumerate(preys):
         if (predator.img.get_rect(topleft=(predator.x, predator.y)).colliderect(prey.img.get_rect(topleft=(prey.x, prey.y)))):
-            predator.hunger -= 1
+            if predator.hunger >= 1:
+                predator.hunger -= 1
             predator.food_eaten += 1  
             predatorGenomes[predatorIndex].fitness += 5
             prey.die = True
+       
+
+def checkTrainedPreyDeath(preys, preyGenomes, preyNetworks):
+    deadPreys = []
+
+    for index, p in enumerate(preys):
+        if p.die == True:  
+            preyGenomes[index].fitness -= 30
+            deadPreys.append(index)
+
+    for i in reversed(deadPreys):
+        preys.pop(i)   
+        preyNetworks.pop(i) 
+        preyGenomes.pop(i)
+
+    return preys         
 
 def checkPreyDeath(preys, preyGenomes, preyNetworks):
     deadPreys = []
 
     for index, p in enumerate(preys):
         if p.die == True:  
-            preyGenomes[index].fitness -= 30
+            preyGenomes[index][1].fitness -= 30
             deadPreys.append(index)
 
     for i in reversed(deadPreys):
@@ -146,9 +175,10 @@ def checkIdlePreyEaten(predator, preys, predatorGenomes, predatorIndex):
 
     for preyIndex, prey in enumerate(preys):
         if (predator.img.get_rect(topleft=(predator.x, predator.y)).colliderect(prey.img.get_rect(topleft=(prey.x, prey.y)))):
-            predator.hunger -= 1
+            if predator.hunger >= 1:
+                predator.hunger -= 1
             predator.food_eaten += 1
-            predatorGenomes[predatorIndex].fitness += 5    
+            predatorGenomes[predatorIndex][1].fitness += 5    
             prey.die = True
             deadPreys.append(preyIndex)
     
@@ -159,18 +189,16 @@ def checkIdlePreyEaten(predator, preys, predatorGenomes, predatorIndex):
 
 
 def reward(genomes, index, amount):
-    genomes[index].fitness += amount
+    genomes[index][1].fitness += amount
 
 def processOutputs(outputs, entity):
 
     if outputs[0] > 0.5:
-        entity.moveForward()
-    if outputs[1] > 0.5:
-        entity.turn_left()
-    elif outputs[2] > 0.5:
         entity.turn_right()
+    else:
+        entity.turn_left()  
 
-def updatePredators(predators, predatorNetworks, preys):
+def updatePredators(predators, genomes, predatorNetworks, preys):
     for index, predator in enumerate(predators):
         inputs = []
 
@@ -180,28 +208,74 @@ def updatePredators(predators, predatorNetworks, preys):
         if closest is not None:
             inputs.append(distanceToPrey)
             inputs.append(angleToPrey)
+            # fitness = -0.1 * distanceToPrey + 25
+            # genomes[index][1].fitness += fitness
         else:
-            inputs.append(1000)
-            inputs.append(180)
+            inputs.append(185)
+            inputs.append(0)
 
         outputs = predatorNetworks[index].activate((inputs))
         processOutputs(outputs, predator)
 
-        predator.x, predator.y = correctPosition(predator.x, predator.y)
+        predator.x, predator.y = correctPosition(predator.x, predator.y)   
 
-def updatePreys(preys, preyGenomes, preyNetworks, predators):
+def updateTrainedPredators(predators, genomes, predatorNetworks, preys):
+    for index, predator in enumerate(predators):
+        inputs = []
+
+        predator.updateHungerTimer()
+
+        closest, distanceToPrey, angleToPrey = predator.getClosest(preys)
+        if closest is not None:
+            inputs.append(distanceToPrey)
+            inputs.append(angleToPrey)
+            fitness = -0.1 * distanceToPrey + 25
+            genomes[index].fitness += fitness
+        else:
+            inputs.append(185)
+            inputs.append(0)
+
+        outputs = predatorNetworks[index].activate((inputs))
+        processOutputs(outputs, predator)
+
+        predator.x, predator.y = correctPosition(predator.x, predator.y)        
+
+
+def updateTrainedPreys(preys, preyGenomes, preyNetworks, predators):
     for index, prey in enumerate(preys):
         inputs = []
 
         prey.updateSurvivalTime()
-        reward(preyGenomes, index, 0.01)
+        preyGenomes[index].fitness += 0.1
 
         closest, distanceToThreat, angleToThreat = prey.getClosest(predators)
         if closest is not None:
             inputs.append(distanceToThreat)
             inputs.append(angleToThreat)
         else:
-            inputs.append(1000)
+            inputs.append(75)
+            inputs.append(180)
+        
+        outputs = preyNetworks[index].activate((inputs))       
+        processOutputs(outputs, prey)
+
+        prey.x, prey.y = correctPosition(prey.x, prey.y)
+
+def updatePreys(preys, preyGenomes, preyNetworks, predators):
+    for index, prey in enumerate(preys):
+        inputs = []
+
+        prey.updateSurvivalTime()
+        reward(preyGenomes, index, 0.1)
+
+        closest, distanceToThreat, angleToThreat = prey.getClosest(predators)
+        if closest is not None:
+            inputs.append(distanceToThreat)
+            inputs.append(angleToThreat)
+            fitness = -0.25 * distanceToThreat + 25
+            preyGenomes[index][1].fitness -= fitness
+        else:
+            inputs.append(185)
             inputs.append(180)
         
         outputs = preyNetworks[index].activate((inputs))       

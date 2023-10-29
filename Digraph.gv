@@ -5,7 +5,10 @@ digraph {
 	forward [fillcolor=lightblue style=filled]
 	left [fillcolor=lightblue style=filled]
 	right [fillcolor=lightblue style=filled]
-	distance -> forward [color=green penwidth=0.6302231232247979 style=solid]
-	distance -> left [color=red penwidth=0.5162550999738611 style=solid]
-	angle -> right [color=red penwidth=0.35904290614475975 style=solid]
+	distance -> forward [color=green penwidth=0.1651096415543764 style=solid]
+	distance -> left [color=red penwidth=0.34155342154784646 style=solid]
+	distance -> right [color=red penwidth=0.20661512958799216 style=solid]
+	angle -> forward [color=red penwidth=0.20654663075260055 style=solid]
+	angle -> left [color=red penwidth=0.4175671052833694 style=solid]
+	angle -> right [color=green penwidth=0.20919585694669085 style=solid]
 }

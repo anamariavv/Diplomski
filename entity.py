@@ -11,7 +11,7 @@ class Entity:
         self.img = None
         self.x = np.random.randint(0, WINDOW_WIDTH)
         self.y = np.random.randint(0, WINDOW_HEIGHT)
-        self.angle = 0
+        self.angle = np.random.randint(-180, 180)
         self.velocity = 1
         self.lineColor = (0,0,255)
         self.die = False
@@ -29,20 +29,18 @@ class Entity:
         self.x = self.x + self.velocity * math.cos(self.angle * math.pi / 180)
         self.y = self.y + self.velocity * math.sin(self.angle * math.pi / 180)
 
-    def stayInPlace(self):
-        self.x = self.x
-        self.y = self.y
-
     def turn_left(self):
         self.angle -= 5
         self.angle %= 360
+        self.moveForward()
 
     def turn_right(self):
         self.angle += 5
         self.angle %= 360
+        self.moveForward()
 
     def getClosest(self, others):
-        minDistance = 180
+        minDistance = self.vision_radius
         angleDifference = 0
         closest = None
 
@@ -59,9 +57,13 @@ class Entity:
                         closest = other
 
         if closest is not None:
-            self.closestEntity = closest                
+            self.closestEntity = closest    
+            self.angleToClosest = angleDifference   
+            self.distanceToClosest = minDistance         
         else:
             self.closestEntity = None
+            self.angleToClosest = 0  
+            self.distanceToClosest = self.vision_radius+1
 
         return closest, minDistance, angleDifference
 
