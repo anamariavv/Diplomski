@@ -23,8 +23,8 @@ def runTestEnvironment():
     WIN = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(TEST_ENVIRONMENT_TITLE)
 
-    preyNetworks, preyGenomes, preys = neatUtils.createTrainedPreys(50)
-    predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators(5)
+    preyNetworks, preyGenomes, preys = neatUtils.createTrainedPreys(30, "winnerPrey.pkl")
+    predatorNetworks, predatorGenomes, predators = neatUtils.createTrainedPredators(10, "winnerPredator.pkl")
     visualisation = Visualisation(WIN)
 
     run = True

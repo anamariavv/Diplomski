@@ -9,27 +9,20 @@ class Prey(Entity):
     def __init__(self):
         super().__init__()
         self.vision_angle = 160
-        self.vision_radius = 100
+        self.vision_radius = 150
+        self.dangerRadius = 60
         self.img = PREY_IMG
         self.lineColor = (199,21,133)
         self.angleToClosest = 0
-        self.fleeRadius = 150
         self.distanceToClosest = self.vision_radius+1
         self.spawnTime = time.time()
         self.timeSurvived = 0
 
-    # def isWithinFleeRadius(self, others):
-    #     if self.isInRadius(other):
-    #         otherAngle = self.calculateAngle(self.img.get_rect(topleft = (self.x, self.y)).center, other.img.get_rect(topleft=(other.x, other.y)).center)
-    #         leftBound = (self.angle-self.vision_angle) % 360
-    #         rightBound = (self.angle+self.vision_angle) % 360
-    #         if self.isWithinVisionAngle(leftBound, rightBound, otherAngle):
-    #             distanceToOther = math.dist(self.img.get_rect(topleft = (self.x, self.y)).center, other.img.get_rect(topleft=(other.x, other.y)).center)
-    #             if distanceToOther < minDistance:
-    #                 minDistance = distanceToOther
-    #                 angleDifference = self.calculateAngleDifference(self.angle, otherAngle)
-    #                 closest = other
+    def isClosestInDangerZone(self):    
+        if (self.x - (self.closestEntity.x))**2 + (self.y - (self.closestEntity.y))**2 < (self.dangerRadius)**2:
+            return True
 
+        return False
 
     def moveForward(self):
         self.x = self.x + self.velocity * math.cos(self.angle * math.pi / 180)
@@ -42,3 +35,7 @@ class Prey(Entity):
         if self.die == False:
             self.timeSurvived = time.time() - self.spawnTime       
 
+    def drawDangerZone(self, surface):
+        self.danger_rect = pygame.Rect(self.x-self.dangerRadius*2*0.5+self.size[0]*0.5, self.y-self.dangerRadius*2*0.5+self.size[0]*0.5, self.dangerRadius*2, self.dangerRadius*2)
+        pygame.draw.arc(surface, self.lineColor, self.danger_rect, -(self.vision_angle*math.pi/180)-(self.angle*math.pi/180), (self.vision_angle*math.pi/180)-(self.angle*math.pi/180))
+        pygame.draw.arc(surface, self.lineColor, self.danger_rect, -(self.vision_angle*math.pi/180)-(self.angle*math.pi/180), (self.vision_angle*math.pi/180)-(self.angle*math.pi/180))

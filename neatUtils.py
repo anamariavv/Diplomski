@@ -15,17 +15,7 @@ def run(configPath, function, iterations, outFileName):
     stats = neat.StatisticsReporter()
     population.add_reporter(stats)
 
-    winner = population.run(function, iterations)
-
-    print('\nBest genome:\n{!s}'.format(winner))
-    with open(outFileName, "wb") as f:
-        pickle.dump(winner, f)
-        f.close()
-
-        # node_names = {-1: 'distance', -2: 'angle', 0: 'forward', 1: 'left', 2: 'right'}
-
-        # visualize.draw_net(config, winner, True, node_names=node_names)
-        # visualize.plot_species(stats, view=True) 
+    population.run(function, iterations)
 
 def createEntities(genomes, config, isPrey):
     neuralNetworks = []
@@ -42,7 +32,7 @@ def createEntities(genomes, config, isPrey):
 
     return neuralNetworks, entities
 
-def createTrainedPredators(n):
+def createTrainedPredators(n, filename):
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'neat-config.txt')
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -52,8 +42,8 @@ def createTrainedPredators(n):
     genomes = []
     predatorNetworks = []
 
-    with open("winnerPredator.pkl", "rb") as f:
-        genome = pickle.load(f)
+    with open(filename, "rb") as f:
+        id, genome = pickle.load(f)
         for _ in range(n):
             genomes.append(genome)
             predators.append(Predator())
@@ -63,7 +53,7 @@ def createTrainedPredators(n):
     return predatorNetworks, genomes, predators
 
 
-def createTrainedPreys(n):
+def createTrainedPreys(n, filename):
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'neat-config-prey.txt')
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -73,8 +63,8 @@ def createTrainedPreys(n):
     genomes = []
     preyNetworks = []
 
-    with open("winnerPrey.pkl", "rb") as f:
-        genome = pickle.load(f)
+    with open(filename, "rb") as f:
+        id, genome = pickle.load(f)
         for _ in range(n):
             genomes.append(genome)
             preys.append(Prey())
@@ -159,7 +149,7 @@ def checkPreyDeath(preys, preyGenomes, preyNetworks):
 
     for index, p in enumerate(preys):
         if p.die == True:  
-            preyGenomes[index][1].fitness -= 30
+            preyGenomes[index][1].fitness -= 50
             deadPreys.append(index)
 
     for i in reversed(deadPreys):
@@ -266,14 +256,17 @@ def updatePreys(preys, preyGenomes, preyNetworks, predators):
         inputs = []
 
         prey.updateSurvivalTime()
-        reward(preyGenomes, index, 0.1)
+        reward(preyGenomes, index, 0.01)
 
         closest, distanceToThreat, angleToThreat = prey.getClosest(predators)
         if closest is not None:
             inputs.append(distanceToThreat)
             inputs.append(angleToThreat)
-            fitness = -0.25 * distanceToThreat + 25
-            preyGenomes[index][1].fitness -= fitness
+            if prey.isClosestInDangerZone():
+                fitness = -0.25 * distanceToThreat + 25
+                preyGenomes[index][1].fitness -= fitness
+            else:
+                preyGenomes[index][1].fitness += 1
         else:
             inputs.append(185)
             inputs.append(180)
@@ -297,7 +290,7 @@ def checkReproductionChance(entity, entities, genomes, networks, isPrey):
                 config_path = os.path.join(local_dir, 'neat-config-prey.txt')
                 config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
                 with open("winnerPrey.pkl", "rb") as f:
-                    genome = pickle.load(f)
+                    id, genome = pickle.load(f)
                     genomes.append(genome)
                     networks.append(neat.nn.FeedForwardNetwork.create(genome, config))
                     entities.append(Prey())     
@@ -307,7 +300,7 @@ def checkReproductionChance(entity, entities, genomes, networks, isPrey):
                 config_path = os.path.join(local_dir, 'neat-config.txt')
                 config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
                 with open("winnerPredator.pkl", "rb") as f:
-                    genome = pickle.load(f)
+                    id, genome = pickle.load(f)
                     genomes.append(genome)
                     networks.append(neat.nn.FeedForwardNetwork.create(genome, config))
                     entities.append(Predator())

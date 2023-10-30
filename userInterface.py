@@ -21,6 +21,8 @@ class UserInterface:
             for entity in entities:
                 entity.drawLineToClosestEntity(self.surface)
                 entity.drawVisionLines(self.surface)
+                if isinstance(entity, Prey):
+                    entity.drawDangerZone(self.surface)
 
     def highlightActiveEntity(self):
         if self.entity is not None and self.entity.die == False:
